@@ -1,12 +1,16 @@
 import { Resend } from 'resend'
 import type { Lead, Client } from '@/types/database'
 
-const resend = new Resend(process.env.RESEND_API_KEY ?? 'not-configured')
+// Lazy init — avoids build-time errors and strips any BOM from stored env var
+function getResend() {
+  const key = (process.env.RESEND_API_KEY ?? 'not-configured').replace(/^﻿/, '').trim()
+  return new Resend(key)
+}
 // Switch to 'Code Mode <hello@codemodeai.com>' once codemodeai.com is verified in Resend
 const FROM = process.env.EMAIL_FROM ?? 'Code Mode <onboarding@resend.dev>'
 
 export async function sendAuditReport(lead: Lead, calendlyLink: string) {
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: lead.email!,
     subject: `Your Free GAO Audit is Ready — ${lead.business_name ?? lead.name}`,
@@ -15,7 +19,7 @@ export async function sendAuditReport(lead: Lead, calendlyLink: string) {
 }
 
 export async function sendNeedMoreInfo(lead: Lead) {
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: lead.email!,
     subject: `Quick question about your business — ${lead.name}`,
@@ -24,7 +28,7 @@ export async function sendNeedMoreInfo(lead: Lead) {
 }
 
 export async function sendNotAFit(lead: Lead) {
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: lead.email!,
     subject: `Your GAO Audit — ${lead.name}`,
@@ -35,7 +39,7 @@ export async function sendNotAFit(lead: Lead) {
 export async function sendCallConfirmation(lead: Lead) {
   if (!lead.call_datetime) return
   const date = new Date(lead.call_datetime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: lead.email!,
     subject: `Your Strategy Call is Confirmed — ${date}`,
@@ -44,7 +48,7 @@ export async function sendCallConfirmation(lead: Lead) {
 }
 
 export async function sendNurtureDay1(lead: Lead) {
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: lead.email!,
     subject: `The #1 growth leak killing most coaching businesses`,
@@ -53,7 +57,7 @@ export async function sendNurtureDay1(lead: Lead) {
 }
 
 export async function sendOnboarding(client: Client) {
-  return resend.emails.send({
+  return getResend().emails.send({
     from: FROM,
     to: client.email!,
     subject: `Welcome to Code Mode — Let's Build Your Growth System`,
