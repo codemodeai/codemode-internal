@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activity'
+import { sendWhatsAppMeetingConfirmation } from '@/lib/whatsapp/sender'
+import type { Lead } from '@/types/database'
 
 const CALENDLY_API = 'https://api.calendly.com'
 
@@ -82,7 +84,7 @@ export async function GET(req: Request) {
         // Find matching lead by email
         const { data: leads } = await supabase
           .from('leads')
-          .select('id, name, email, call_booked, call_datetime')
+          .select('id, name, email, phone, whatsapp_opted_in, call_booked, call_datetime, call_meet_link')
           .ilike('email', email)
           .order('created_at', { ascending: false })
           .limit(1)
@@ -122,6 +124,17 @@ export async function GET(req: Request) {
             invitee_email: email,
           },
         })
+
+        // WhatsApp meeting confirmation
+        try {
+          await sendWhatsAppMeetingConfirmation({
+            ...lead,
+            call_datetime: event.start_time,
+            call_meet_link: joinUrl,
+          } as unknown as Lead)
+        } catch (waErr) {
+          console.error('[Calendly Sync] WhatsApp confirmation failed:', waErr)
+        }
 
         console.log(`[Calendly Sync] Updated lead ${lead.id} (${lead.name}) — call at ${event.start_time}`)
         synced++

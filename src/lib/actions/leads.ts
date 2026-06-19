@@ -4,8 +4,9 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activity'
 import { sendAuditReport, sendCallConfirmation, sendNurtureDay1, sendNotAFit, sendNeedMoreInfo } from '@/lib/email/resend'
+import { sendWhatsAppMeetingConfirmation } from '@/lib/whatsapp/sender'
 import { CALENDLY_LINK } from '@/lib/constants'
-import type { LeadStatus, ProjectType } from '@/types/database'
+import type { Lead, LeadStatus, ProjectType } from '@/types/database'
 
 export async function updateLeadStatus(leadId: string, status: LeadStatus) {
   const supabase = await createClient()
@@ -231,6 +232,9 @@ export async function markCallBooked(leadId: string, datetime: string, meetLink:
 
   if (lead?.email && meetLink) {
     await sendCallConfirmation(lead).catch(() => null)
+  }
+  if (lead?.phone) {
+    await sendWhatsAppMeetingConfirmation(lead as unknown as Lead).catch(() => null)
   }
 
   revalidatePath('/leads')

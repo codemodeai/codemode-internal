@@ -1,58 +1,82 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activity'
-import { sendTemplate, normalizePhone } from './client'
-import { buildTemplate, type SequenceStep } from './templates'
+import { sendTemplateMessage, normalizePhone } from './meta-client'
+import {
+  buildSequenceTemplate,
+  buildMeetingScheduled,
+  type SequenceStep,
+  type WhatsAppPayload,
+} from './templates'
 import type { Lead } from '@/types/database'
 
-export async function sendWhatsAppStep(lead: Lead, step: SequenceStep): Promise<void> {
+/**
+ * Core send: records a pending row, sends via Meta Cloud API, updates status.
+ * `step` is stored for sequence tracking (0 = non-sequence message like meeting confirm).
+ */
+async function dispatch(lead: Lead, payload: WhatsAppPayload, step: number): Promise<boolean> {
   if (!lead.phone) {
-    console.log(`[WA] Lead ${lead.id} has no phone — skipping step ${step}`)
-    return
+    console.log(`[WA] Lead ${lead.id} has no phone — skipping ${payload.templateName}`)
+    return false
   }
-
   if (!lead.whatsapp_opted_in) {
-    console.log(`[WA] Lead ${lead.id} opted out — skipping`)
-    return
+    console.log(`[WA] Lead ${lead.id} opted out — skipping ${payload.templateName}`)
+    return false
   }
 
   const phone = normalizePhone(lead.phone)
   if (!phone) {
     console.warn(`[WA] Could not normalize phone "${lead.phone}" for lead ${lead.id}`)
-    return
+    return false
   }
 
-  const { templateName, params } = buildTemplate(step, lead)
   const supabase = createServiceClient()
 
-  // Insert pending record
   const { data: msgRow } = await supabase
     .from('whatsapp_messages')
     .insert({
       lead_id: lead.id,
       sequence_step: step,
-      template_name: templateName,
+      template_name: payload.templateName,
       phone,
-      params,
+      params: (payload.bodyParams ?? []).map((value, i) => ({ name: String(i + 1), value })),
       status: 'pending',
     })
     .select('id')
     .single()
 
-  const result = await sendTemplate(templateName, { whatsappNumber: phone, customParams: params })
-
-  const status = result.ok ? 'sent' : 'failed'
+  const result = await sendTemplateMessage(phone, payload.templateName, {
+    headerDocument: payload.headerDocument,
+    bodyParams: payload.bodyParams,
+    urlButtonParams: payload.urlButtonParams,
+  })
 
   await supabase
     .from('whatsapp_messages')
     .update({
-      status,
+      status: result.ok ? 'sent' : 'failed',
       wati_message_id: result.messageId,
       error_message: result.error,
     })
     .eq('id', (msgRow as { id: string } | null)?.id ?? '')
 
-  // Advance sequence step on lead
   if (result.ok) {
+    console.log(`[WA] Sent ${payload.templateName} to ${phone} (lead ${lead.id})`)
+    return true
+  }
+  console.error(`[WA] Failed ${payload.templateName} for lead ${lead.id}:`, result.error)
+  return false
+}
+
+/**
+ * Sends a numbered nurture-sequence step.
+ * For step 2 (audit ready), pass the generated PDF public URL.
+ */
+export async function sendWhatsAppStep(lead: Lead, step: SequenceStep, pdfUrl?: string | null): Promise<void> {
+  const payload = buildSequenceTemplate(step, lead, pdfUrl)
+  const ok = await dispatch(lead, payload, step)
+
+  if (ok) {
+    const supabase = createServiceClient()
     await supabase
       .from('leads')
       .update({
@@ -65,12 +89,27 @@ export async function sendWhatsAppStep(lead: Lead, step: SequenceStep): Promise<
       entity_type: 'lead',
       entity_id: lead.id,
       event_type: 'system',
-      description: `WhatsApp step ${step} sent (${templateName})`,
-      metadata: { step, phone, template: templateName },
+      description: `WhatsApp step ${step} sent (${payload.templateName})`,
+      metadata: { step, template: payload.templateName },
     })
+  }
+}
 
-    console.log(`[WA] Step ${step} sent to ${phone} (lead ${lead.id})`)
-  } else {
-    console.error(`[WA] Step ${step} failed for lead ${lead.id}:`, result.error)
+/**
+ * Sends the meeting-scheduled confirmation (fired from Calendly sync).
+ * Not part of the numbered nurture sequence.
+ */
+export async function sendWhatsAppMeetingConfirmation(lead: Lead): Promise<void> {
+  const payload = buildMeetingScheduled(lead)
+  const ok = await dispatch(lead, payload, 0)
+
+  if (ok) {
+    await logActivity({
+      entity_type: 'lead',
+      entity_id: lead.id,
+      event_type: 'system',
+      description: 'WhatsApp meeting confirmation sent',
+      metadata: { template: payload.templateName, call_datetime: lead.call_datetime },
+    })
   }
 }

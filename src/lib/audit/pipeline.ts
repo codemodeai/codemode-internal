@@ -2,6 +2,7 @@ import { createServiceClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activity'
 import { sendAuditReport } from '@/lib/email/resend'
 import { sendWhatsAppStep } from '@/lib/whatsapp/sender'
+import { generateAndUploadAuditPdf } from './pdf'
 import { scrapeAll } from './scraper'
 import { analyzeWithClaude } from './auditor'
 import type { Lead } from '@/types/database'
@@ -80,6 +81,16 @@ export async function runAuditPipeline(leadId: string): Promise<void> {
 
     const updatedLead = updatedRow as unknown as Lead
 
+    // Generate the PDF report once — reused for WhatsApp delivery
+    const pdfUrl = await generateAndUploadAuditPdf(updatedLead)
+    if (pdfUrl) {
+      await supabase
+        .from('leads')
+        .update({ audit_report: { ...(updatedLead.audit_report ?? {}), pdf_url: pdfUrl } })
+        .eq('id', leadId)
+      console.log(`[Audit] PDF report ready: ${pdfUrl}`)
+    }
+
     // Send email report
     if (lead.email && updatedRow) {
       try {
@@ -108,10 +119,10 @@ export async function runAuditPipeline(leadId: string): Promise<void> {
       }
     }
 
-    // WhatsApp Step 2 — audit ready notification
+    // WhatsApp Step 2 — audit ready notification with PDF report + Book Call button
     if (lead.phone) {
       try {
-        await sendWhatsAppStep(updatedLead, 2)
+        await sendWhatsAppStep(updatedLead, 2, pdfUrl)
       } catch (waErr) {
         console.error('[Audit] WhatsApp step 2 failed:', waErr)
       }
