@@ -1,7 +1,7 @@
 import { Resend } from 'resend'
 import type { Lead, Client } from '@/types/database'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resend = new Resend(process.env.RESEND_API_KEY ?? 'not-configured')
 // Switch to 'Code Mode <hello@codemodeai.com>' once codemodeai.com is verified in Resend
 const FROM = process.env.EMAIL_FROM ?? 'Code Mode <onboarding@resend.dev>'
 
