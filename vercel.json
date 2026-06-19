@@ -1,1 +1,1 @@
-{"crons":[{"path":"/api/cron/calendly-sync","schedule":"*/5 * * * *"},{"path":"/api/cron/whatsapp-followup","schedule":"0 6 * * *"}]}
+{"crons":[{"path":"/api/cron/whatsapp-followup","schedule":"0 6 * * *"}]}
