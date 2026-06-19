@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  /* Sidebar */
+  --color-cm-sidebar: #03060E;
+
+  /* Main content - light */
+  --color-cm-bg: #EDF2F8;
+  --color-cm-border: #E0EBF5;
+
+  /* Accent - bright blue */
+  --color-cm-blue: #1A8FD4;
+  --color-cm-blue-dim: #4AAEE0;
+  --color-cm-blue-light: #E3F2FC;
+
+  /* Dark surface card */
+  --color-cm-dark: #083060;
+  --color-cm-dark-border: #184A90;
+  --color-cm-steel: #8FA3BF;
+
+  /* Text on light background */
+  --color-cm-text: #0D1F35;
+  --color-cm-muted: #6B82A0;
+  --color-cm-subtle: #9DB3CC;
+}
+
+:root {
+  --background: #EDF2F8;
+  --foreground: #0D1F35;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 6, 14, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
