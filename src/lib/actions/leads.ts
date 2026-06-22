@@ -243,12 +243,24 @@ export async function markCallBooked(leadId: string, datetime: string, meetLink:
 
 export async function saveAiInstructions(leadId: string, instructions: string, quotedPrice: string) {
   const supabase = await createClient()
+  const price = quotedPrice.trim()
+
+  // Quoting a price kicks off the post-meeting deal → start it "warm" (only if no
+  // temperature yet; never downgrade an already hot/cold lead on a re-save).
+  const { data: existing } = await supabase
+    .from('leads')
+    .select('deal_temperature')
+    .eq('id', leadId)
+    .single()
+  const startsDeal = price && !existing?.deal_temperature
+
   const { error } = await supabase
     .from('leads')
     .update({
       ai_instructions: instructions.trim() || null,
-      quoted_price: quotedPrice.trim() || null,
+      quoted_price: price || null,
       last_activity_at: new Date().toISOString(),
+      ...(startsDeal ? { deal_temperature: 'warm', deal_temp_updated_at: new Date().toISOString() } : {}),
     })
     .eq('id', leadId)
   if (error) throw new Error(error.message)
@@ -257,9 +269,10 @@ export async function saveAiInstructions(leadId: string, instructions: string, q
     entity_type: 'lead',
     entity_id: leadId,
     event_type: 'operator_action',
-    description: 'AI instructions updated for this lead',
-    metadata: { quoted_price: quotedPrice || null },
+    description: startsDeal ? 'AI instructions saved; deal opened (warm)' : 'AI instructions updated for this lead',
+    metadata: { quoted_price: price || null },
   })
+  revalidatePath('/leads')
   revalidatePath(`/leads/${leadId}`)
 }
 

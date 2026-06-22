@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendWhatsAppStep, sendWhatsAppSeenNudge } from '@/lib/whatsapp/sender'
-import { setQualification } from '@/lib/leads/qualification'
+import { setQualification, setDealTemperature } from '@/lib/leads/qualification'
 import type { Lead } from '@/types/database'
 
 // Call this endpoint daily via a cron job (e.g., cron-job.org, GitHub Actions, or Vercel Cron)
@@ -56,6 +56,30 @@ export async function GET(req: Request) {
     seenNudges++
   }
 
+  // --- Deal-temperature cooling (Phase 4 / Part 3): a post-meeting lead that
+  // goes quiet cools off — hot → warm after 4 days silent, warm → cold after 8.
+  // "Silent" = time since their last inbound reply (fallback: last temp change).
+  const { data: dealLeads } = await supabase
+    .from('leads')
+    .select('id, deal_temperature, last_inbound_at, deal_temp_updated_at')
+    .not('deal_temperature', 'is', null)
+    .neq('deal_temperature', 'cold')
+    .not('status', 'in', '("closed_won","closed_lost","not_fit","archived")')
+  let cooled = 0
+  for (const d of dealLeads ?? []) {
+    const row = d as { id: string; deal_temperature: string; last_inbound_at: string | null; deal_temp_updated_at: string | null }
+    const since = row.last_inbound_at ?? row.deal_temp_updated_at
+    if (!since) continue
+    const silent = daysSince(since)
+    let next: 'warm' | 'cold' | null = null
+    if (row.deal_temperature === 'hot' && silent >= 4) next = 'warm'
+    else if (row.deal_temperature === 'warm' && silent >= 8) next = 'cold'
+    if (next) {
+      await setDealTemperature(row.id, next, `${silent} days silent after meeting`)
+      cooled++
+    }
+  }
+
   // Fetch all active leads with phone that haven't completed the sequence
   const { data: leads, error } = await supabase
     .from('leads')
@@ -106,6 +130,6 @@ export async function GET(req: Request) {
     }
   }
 
-  console.log(`[WA Cron] Processed ${leads?.length ?? 0} leads, sent ${results.length} messages, ${seenNudges} seen-nudges`)
-  return NextResponse.json({ processed: leads?.length ?? 0, sent: results, qualified_no_response: qualifiedNoResponse, seen_nudges: seenNudges })
+  console.log(`[WA Cron] Processed ${leads?.length ?? 0} leads, sent ${results.length} messages, ${seenNudges} seen-nudges, ${cooled} cooled`)
+  return NextResponse.json({ processed: leads?.length ?? 0, sent: results, qualified_no_response: qualifiedNoResponse, seen_nudges: seenNudges, deals_cooled: cooled })
 }

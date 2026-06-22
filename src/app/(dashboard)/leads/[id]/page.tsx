@@ -44,6 +44,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           {lead.business_name && <p className="text-cm-muted text-sm mt-0.5">{lead.business_name}</p>}
         </div>
         <div className="flex items-center gap-3">
+          {lead.deal_temperature && <DealTempBadge temp={lead.deal_temperature} />}
           <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}>
             {LEAD_STATUS_LABELS[lead.status as LeadStatus]}
           </span>
@@ -305,6 +306,19 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
         </div>
       )}
     </div>
+  )
+}
+
+function DealTempBadge({ temp }: { temp: 'hot' | 'warm' | 'cold' }) {
+  const map = {
+    hot:  { cls: 'bg-red-100 text-red-700',     label: '🔥 Hot' },
+    warm: { cls: 'bg-amber-100 text-amber-700', label: '🌤️ Warm' },
+    cold: { cls: 'bg-sky-100 text-sky-700',     label: '❄️ Cold' },
+  }[temp]
+  return (
+    <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${map.cls}`}>
+      {map.label}
+    </span>
   )
 }
 

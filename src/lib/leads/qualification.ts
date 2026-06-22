@@ -1,6 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activity'
-import type { QualificationState } from '@/types/database'
+import type { QualificationState, DealTemperature } from '@/types/database'
 
 /**
  * Moves a lead's qualification_state with sensible guards so signals never
@@ -38,6 +38,40 @@ export async function setQualification(
     entity_id: leadId,
     event_type: 'system',
     description: `Qualification → ${next} (${reason})`,
+    metadata: { from: current, to: next, reason },
+  })
+}
+
+/**
+ * Sets the post-meeting deal temperature (hot/warm/cold) and logs the change.
+ * No-ops if unchanged. Used by the acceptance classifier (hot) and the daily
+ * silence-cooling sweep (warm/cold).
+ */
+export async function setDealTemperature(
+  leadId: string,
+  next: DealTemperature,
+  reason: string,
+): Promise<void> {
+  const supabase = createServiceClient()
+  const { data: lead } = await supabase
+    .from('leads')
+    .select('deal_temperature')
+    .eq('id', leadId)
+    .single()
+
+  const current = (lead?.deal_temperature as DealTemperature | undefined) ?? null
+  if (current === next) return
+
+  await supabase
+    .from('leads')
+    .update({ deal_temperature: next, deal_temp_updated_at: new Date().toISOString() })
+    .eq('id', leadId)
+
+  await logActivity({
+    entity_type: 'lead',
+    entity_id: leadId,
+    event_type: 'system',
+    description: `Deal temperature → ${next} (${reason})`,
     metadata: { from: current, to: next, reason },
   })
 }

@@ -8,7 +8,8 @@ import {
   findLeadByPhone,
 } from '@/lib/whatsapp/chat'
 import { generateAgentReply } from '@/lib/whatsapp/agent'
-import { setQualification, recordWhatsAppRead } from '@/lib/leads/qualification'
+import { setQualification, recordWhatsAppRead, setDealTemperature } from '@/lib/leads/qualification'
+import { classifyDealSignal, temperatureForSignal } from '@/lib/whatsapp/classify'
 import { createServiceClient } from '@/lib/supabase/server'
 
 const clean = (s: string | undefined) => (s ?? '').replace(/^﻿/, '').trim()
@@ -109,6 +110,7 @@ export async function POST(req: NextRequest) {
           })
 
           const optedOut = isOptOut(text)
+          const lead = conv.lead_id ? await findLeadByPhone(conv.phone) : null
 
           if (conv.lead_id) {
             await logActivity({
@@ -117,6 +119,12 @@ export async function POST(req: NextRequest) {
               event_type: 'system',
               description: `WhatsApp message received: "${text.slice(0, 80)}"`,
             })
+            // Stamp last inbound for post-meeting silence tracking.
+            await createServiceClient()
+              .from('leads')
+              .update({ last_inbound_at: new Date().toISOString() })
+              .eq('id', conv.lead_id)
+
             if (optedOut) {
               // Clear opt-out → disqualify (terminal) and stop all future sends.
               await setQualification(conv.lead_id, 'disqualified', 'opted out on WhatsApp').catch(() => {})
@@ -127,6 +135,17 @@ export async function POST(req: NextRequest) {
             } else {
               // They replied → engaged (won't downgrade a booked lead)
               await setQualification(conv.lead_id, 'engaged', 'replied on WhatsApp').catch(() => {})
+              // Post-quote: read their stance and update the deal temperature (hot on accept).
+              if (lead?.quoted_price) {
+                try {
+                  const hist = await getHistory(conv.id, 10)
+                  const signal = await classifyDealSignal(lead.quoted_price, hist)
+                  const temp = temperatureForSignal(signal)
+                  if (temp) await setDealTemperature(conv.lead_id, temp, `reply after quote classified "${signal}"`)
+                } catch (clsErr) {
+                  console.error('[WA Webhook] deal classify failed:', clsErr)
+                }
+              }
             }
           }
 
@@ -140,7 +159,6 @@ export async function POST(req: NextRequest) {
           } else if (conv.ai_enabled) {
             // AI auto-reply (within the 24h window, which is open since they just messaged)
             try {
-              const lead = conv.lead_id ? await findLeadByPhone(conv.phone) : null
               const history = await getHistory(conv.id, 20)
               const reply = await generateAgentReply(lead, history)
               await sendAndStore(conv, reply, 'ai')

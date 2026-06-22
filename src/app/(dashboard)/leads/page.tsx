@@ -32,7 +32,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
 
   let query = supabase
     .from('leads')
-    .select('id, name, email, business_name, status, source, created_at, call_booked, qualified, instagram_score, facebook_score, website_score, overall_score, segment, qualification_state, last_activity_at')
+    .select('id, name, email, business_name, status, source, created_at, call_booked, qualified, instagram_score, facebook_score, website_score, overall_score, segment, qualification_state, deal_temperature, last_activity_at')
     .order('created_at', { ascending: false })
 
   const showArchived = sp.archived === '1'
@@ -159,6 +159,11 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
                           {lead.qualification_state && lead.qualification_state !== 'pending' && (
                             <span className={`text-[11px] font-medium ${QUAL_STYLE[lead.qualification_state]?.text ?? 'text-cm-subtle'}`}>
                               {QUAL_STYLE[lead.qualification_state]?.label ?? lead.qualification_state}
+                            </span>
+                          )}
+                          {lead.deal_temperature && (
+                            <span className="text-[11px] font-medium">
+                              {lead.deal_temperature === 'hot' ? '🔥 Hot' : lead.deal_temperature === 'warm' ? '🌤️ Warm' : '❄️ Cold'}
                             </span>
                           )}
                         </div>

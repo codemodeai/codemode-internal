@@ -72,6 +72,10 @@ export type QualificationState =
   | 'booked'       // booked a call
   | 'disqualified' // not a fit / opted out
 
+// Post-meeting deal temperature (set once we've quoted a price / had the call).
+// Turns hot on price acceptance; cools as the lead stays silent.
+export type DealTemperature = 'hot' | 'warm' | 'cold'
+
 export interface AuditGap {
   gap: string
   severity: 'critical' | 'major' | 'minor'
@@ -138,6 +142,9 @@ export interface Lead {
   seen_nudge_sent_at: string | null
   ai_instructions: string | null
   quoted_price: string | null
+  deal_temperature: DealTemperature | null
+  deal_temp_updated_at: string | null
+  last_inbound_at: string | null
   blueprint_sent: boolean
   blueprint_sent_at: string | null
   blueprint_url: string | null
