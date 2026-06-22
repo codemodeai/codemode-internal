@@ -2,7 +2,11 @@ import Anthropic from '@anthropic-ai/sdk'
 import type { Lead, GrowthScorecard, AuditGap, AuditOpportunity, TalkingPoint } from '@/types/database'
 import type { ScrapeResult } from './scraper'
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+// Strip a leading BOM/whitespace that PowerShell-piped Vercel env vars carry,
+// otherwise the SDK throws "Cannot convert argument to a ByteString" when it
+// sets the x-api-key header. (Same fix as whatsapp/agent.ts.)
+const clean = (s: string | undefined) => (s ?? '').replace(/^﻿/, '').trim()
+const anthropic = new Anthropic({ apiKey: clean(process.env.ANTHROPIC_API_KEY) })
 
 export interface AuditAnalysis {
   summary: string

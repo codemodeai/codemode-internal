@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { sendWhatsAppStep } from '@/lib/whatsapp/sender'
+import { setQualification } from '@/lib/leads/qualification'
 import type { Lead } from '@/types/database'
 
 // Call this endpoint daily via a cron job (e.g., cron-job.org, GitHub Actions, or Vercel Cron)
@@ -17,6 +18,22 @@ export async function GET(req: Request) {
   }
 
   const supabase = createServiceClient()
+
+  // --- Qualification sweep (Phase 2): leads who got their report but stayed
+  // silent for 2+ days (never replied → still 'pending', not booked) → no_response.
+  const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000).toISOString()
+  const { data: silent } = await supabase
+    .from('leads')
+    .select('id')
+    .eq('qualification_state', 'pending')
+    .eq('call_booked', false)
+    .not('audit_report', 'is', null)
+    .lte('created_at', twoDaysAgo)
+  let qualifiedNoResponse = 0
+  for (const s of silent ?? []) {
+    await setQualification((s as { id: string }).id, 'no_response', '2 days silent after report')
+    qualifiedNoResponse++
+  }
 
   // Fetch all active leads with phone that haven't completed the sequence
   const { data: leads, error } = await supabase
@@ -69,5 +86,5 @@ export async function GET(req: Request) {
   }
 
   console.log(`[WA Cron] Processed ${leads?.length ?? 0} leads, sent ${results.length} messages`)
-  return NextResponse.json({ processed: leads?.length ?? 0, sent: results })
+  return NextResponse.json({ processed: leads?.length ?? 0, sent: results, qualified_no_response: qualifiedNoResponse })
 }

@@ -2,13 +2,19 @@ import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activity'
 import { sendWhatsAppMeetingConfirmation } from '@/lib/whatsapp/sender'
+import { setQualification } from '@/lib/leads/qualification'
 import type { Lead } from '@/types/database'
 
 const CALENDLY_API = 'https://api.calendly.com'
 
+// Strip a leading BOM/whitespace that PowerShell-piped Vercel env vars can carry,
+// otherwise the token breaks the Authorization ByteString header. See env-var BOM gotcha.
+const clean = (s: string | undefined) => (s ?? '').replace(/^﻿/, '').trim()
+const CALENDLY_TOKEN = clean(process.env.CALENDLY_API_TOKEN)
+
 function headers() {
   return {
-    Authorization: `Bearer ${process.env.CALENDLY_API_TOKEN}`,
+    Authorization: `Bearer ${CALENDLY_TOKEN}`,
     'Content-Type': 'application/json',
   }
 }
@@ -60,7 +66,7 @@ export async function GET(req: Request) {
     }
   }
 
-  if (!process.env.CALENDLY_API_TOKEN) {
+  if (!CALENDLY_TOKEN) {
     return NextResponse.json({ error: 'CALENDLY_API_TOKEN not set' }, { status: 500 })
   }
 
@@ -112,6 +118,9 @@ export async function GET(req: Request) {
           status: 'call_scheduled',
           last_activity_at: new Date().toISOString(),
         }).eq('id', lead.id)
+
+        // Booking is the strongest qualification signal.
+        await setQualification(lead.id, 'booked', 'booked a call via Calendly').catch(() => {})
 
         await logActivity({
           entity_type: 'lead',

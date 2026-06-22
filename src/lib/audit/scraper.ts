@@ -1,7 +1,10 @@
 const APIFY_BASE = 'https://api.apify.com/v2'
 
 function actorPath(envVar: string, fallback: string): string {
-  return (process.env[envVar] ?? fallback).replace('/', '~')
+  // Strip a leading BOM/whitespace from the env var (PowerShell-piped Vercel vars
+  // carry one) — otherwise the actor id in the URL is malformed and Apify 404s,
+  // so no run is created and the scrape silently returns "No data".
+  return (process.env[envVar] ?? fallback).replace(/^﻿/, '').trim().replace('/', '~')
 }
 
 export interface InstagramProfile {
@@ -75,7 +78,7 @@ function stripHtml(s: string): string {
 }
 
 async function apifyRun<T>(actor: string, input: Record<string, unknown>): Promise<T[] | null> {
-  const key = process.env.APIFY_API_KEY
+  const key = (process.env.APIFY_API_KEY ?? '').replace(/^﻿/, '').trim()
   if (!key) return null
 
   const id = actorPath(actor === 'instagram' ? 'APIFY_INSTAGRAM_ACTOR' : 'APIFY_FACEBOOK_ACTOR',

@@ -60,6 +60,18 @@ export interface GrowthScorecard {
   automation_maturity: number
 }
 
+// Score-based classification (set automatically at the end of the audit).
+// potential = overall >= 7, nurture = 4..6.99, not_fit = < 4.
+export type LeadSegment = 'potential' | 'nurture' | 'not_fit'
+
+// Engagement/response-based qualification (evolves as the lead interacts).
+export type QualificationState =
+  | 'pending'      // audited, no reply yet
+  | 'engaged'      // replied / interacting with us
+  | 'no_response'  // 2 days silent after report
+  | 'booked'       // booked a call
+  | 'disqualified' // not a fit / opted out
+
 export interface AuditGap {
   gap: string
   severity: 'critical' | 'major' | 'minor'
@@ -108,6 +120,11 @@ export interface Lead {
   instagram_score: number | null
   facebook_score: number | null
   website_score: number | null
+  overall_score: number | null
+  segment: LeadSegment | null
+  qualification_state: QualificationState
+  qualified_at: string | null
+  whatsapp_last_read_at: string | null
   growth_scorecard: GrowthScorecard | null
   gaps: AuditGap[] | null
   opportunities: AuditOpportunity[] | null
@@ -116,6 +133,8 @@ export interface Lead {
   call_datetime: string | null
   call_meet_link: string | null
   call_notes: string | null
+  reminder_30_sent_at: string | null
+  reminder_start_sent_at: string | null
   blueprint_sent: boolean
   blueprint_sent_at: string | null
   blueprint_url: string | null

@@ -10,6 +10,20 @@ const SOURCE_LABELS: Record<LeadSource, string> = {
   direct: 'Direct',
 }
 
+const SEGMENT_STYLE: Record<string, { bg: string; text: string; label: string }> = {
+  potential: { bg: 'bg-green-50', text: 'text-green-700', label: 'Potential' },
+  nurture: { bg: 'bg-amber-50', text: 'text-amber-700', label: 'Nurture' },
+  not_fit: { bg: 'bg-gray-100', text: 'text-gray-500', label: 'Not fit' },
+}
+
+const QUAL_STYLE: Record<string, { text: string; label: string }> = {
+  pending: { text: 'text-cm-subtle', label: 'Pending' },
+  engaged: { text: 'text-blue-600', label: 'Engaged' },
+  no_response: { text: 'text-gray-400', label: 'No response' },
+  booked: { text: 'text-green-600', label: 'Booked' },
+  disqualified: { text: 'text-red-500', label: 'Disqualified' },
+}
+
 type SearchParams = Promise<{ status?: string; source?: string; q?: string; archived?: string }>
 
 export default async function LeadsPage({ searchParams }: { searchParams: SearchParams }) {
@@ -18,7 +32,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
 
   let query = supabase
     .from('leads')
-    .select('id, name, email, business_name, status, source, created_at, call_booked, qualified, instagram_score, facebook_score, website_score, last_activity_at')
+    .select('id, name, email, business_name, status, source, created_at, call_booked, qualified, instagram_score, facebook_score, website_score, overall_score, segment, qualification_state, last_activity_at')
     .order('created_at', { ascending: false })
 
   const showArchived = sp.archived === '1'
@@ -107,6 +121,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
               <th className="text-left px-5 py-3 text-xs font-semibold text-cm-muted uppercase tracking-wide">Name</th>
               <th className="text-left px-5 py-3 text-xs font-semibold text-cm-muted uppercase tracking-wide">Business</th>
               <th className="text-left px-5 py-3 text-xs font-semibold text-cm-muted uppercase tracking-wide">Status</th>
+              <th className="text-left px-5 py-3 text-xs font-semibold text-cm-muted uppercase tracking-wide">Segment</th>
               <th className="text-left px-5 py-3 text-xs font-semibold text-cm-muted uppercase tracking-wide">Source</th>
               <th className="text-left px-5 py-3 text-xs font-semibold text-cm-muted uppercase tracking-wide">Scores</th>
               <th className="text-left px-5 py-3 text-xs font-semibold text-cm-muted uppercase tracking-wide">Created</th>
@@ -115,7 +130,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
           <tbody className="divide-y divide-gray-50">
             {(leads ?? []).length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-5 py-12 text-center text-cm-subtle">No leads found</td>
+                <td colSpan={7} className="px-5 py-12 text-center text-cm-subtle">No leads found</td>
               </tr>
             ) : (
               (leads ?? []).map(lead => {
@@ -133,6 +148,21 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${sc.bg} ${sc.text}`}>
                         {LEAD_STATUS_LABELS[lead.status as LeadStatus]}
                       </span>
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {lead.segment ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium w-fit ${SEGMENT_STYLE[lead.segment].bg} ${SEGMENT_STYLE[lead.segment].text}`}>
+                            {SEGMENT_STYLE[lead.segment].label}
+                            {lead.overall_score !== null && <span className="opacity-70">{lead.overall_score}</span>}
+                          </span>
+                          {lead.qualification_state && lead.qualification_state !== 'pending' && (
+                            <span className={`text-[11px] font-medium ${QUAL_STYLE[lead.qualification_state]?.text ?? 'text-cm-subtle'}`}>
+                              {QUAL_STYLE[lead.qualification_state]?.label ?? lead.qualification_state}
+                            </span>
+                          )}
+                        </div>
+                      ) : <span className="text-cm-subtle">—</span>}
                     </td>
                     <td className="px-5 py-3.5 text-cm-muted">{SOURCE_LABELS[lead.source as LeadSource] ?? lead.source}</td>
                     <td className="px-5 py-3.5">

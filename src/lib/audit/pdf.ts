@@ -19,6 +19,19 @@ function scoreColor(v: number) {
   return v >= 7 ? GREEN : v >= 5 ? AMBER : RED
 }
 
+// pdf-lib's standard Helvetica only encodes WinAnsi (Latin-1). AI-generated audit
+// text routinely contains ₹, em/en dashes, smart quotes, etc. (chars > 255) which
+// make drawText throw. Replace the common ones and strip anything else non-Latin1.
+const safe = (s: string | undefined): string =>
+  (s ?? '')
+    .replace(/₹/g, 'Rs.')
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/[–—]/g, '-')
+    .replace(/…/g, '...')
+    .replace(/[•●]/g, '-')
+    .replace(/[^\x00-\xFF]/g, '')
+
 export async function generateAuditPdf(lead: Lead): Promise<Uint8Array> {
   const doc = await PDFDocument.create()
   const font = await doc.embedFont(StandardFonts.Helvetica)
@@ -53,7 +66,7 @@ export async function generateAuditPdf(lead: Lead): Promise<Uint8Array> {
   }
 
   const drawParagraph = (text: string, f: PDFFont, size: number, color = DARK, lineGap = 4) => {
-    const lines = wrap(text, f, size, PAGE_W - MARGIN * 2)
+    const lines = wrap(safe(text), f, size, PAGE_W - MARGIN * 2)
     for (const ln of lines) {
       newPageIfNeeded(size + lineGap)
       page.drawText(ln, { x: MARGIN, y, size, font: f, color })
@@ -79,9 +92,9 @@ export async function generateAuditPdf(lead: Lead): Promise<Uint8Array> {
   y = PAGE_H - 120
 
   // Business name
-  page.drawText(lead.business_name ?? lead.name, { x: MARGIN, y, size: 20, font: bold, color: DARK })
+  page.drawText(safe(lead.business_name ?? lead.name), { x: MARGIN, y, size: 20, font: bold, color: DARK })
   y -= 18
-  page.drawText(`Prepared for ${lead.name} · ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`,
+  page.drawText(safe(`Prepared for ${lead.name} · ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}`),
     { x: MARGIN, y, size: 10, font, color: GRAY })
   y -= 10
 
@@ -142,7 +155,7 @@ export async function generateAuditPdf(lead: Lead): Promise<Uint8Array> {
       newPageIfNeeded(40)
       const c = g.severity === 'critical' ? RED : g.severity === 'major' ? AMBER : GRAY
       page.drawRectangle({ x: MARGIN, y: y - 2, width: 4, height: 12, color: c })
-      page.drawText(`${g.severity.toUpperCase()} · ${g.revenue_impact}`, { x: MARGIN + 12, y, size: 9, font: bold, color: c })
+      page.drawText(safe(`${g.severity.toUpperCase()} · ${g.revenue_impact}`), { x: MARGIN + 12, y, size: 9, font: bold, color: c })
       y -= 14
       drawParagraph(g.gap, font, 10, DARK, 4)
       y -= 6

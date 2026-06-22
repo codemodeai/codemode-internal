@@ -4,7 +4,9 @@ import { createClient } from '@/lib/supabase/server'
 import { PILLAR_LABELS } from '@/lib/constants'
 import type { ContentPillar } from '@/types/database'
 
-const client = new Anthropic()
+// Pass the key explicitly with a BOM strip — the SDK's default env read would
+// otherwise inherit a PowerShell-piped BOM and throw a ByteString header error.
+const client = new Anthropic({ apiKey: (process.env.ANTHROPIC_API_KEY ?? '').replace(/^﻿/, '').trim() })
 
 export async function POST(req: Request) {
   const supabase = await createClient()

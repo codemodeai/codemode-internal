@@ -5,6 +5,7 @@ import { sendWhatsAppStep } from '@/lib/whatsapp/sender'
 import { generateAndUploadAuditPdf } from './pdf'
 import { scrapeAll } from './scraper'
 import { analyzeWithClaude } from './auditor'
+import { computeOverallScore, segmentFor } from './scoring'
 import type { Lead } from '@/types/database'
 
 const CALENDLY_LINK = process.env.CALENDLY_LINK ?? 'https://calendly.com/codemodeai'
@@ -44,11 +45,19 @@ export async function runAuditPipeline(leadId: string): Promise<void> {
     // AI analysis
     const analysis = await analyzeWithClaude(lead, scrape)
 
+    // Score-based segmentation (potential / nurture / not_fit).
+    // not_fit leads skip the active nurture pipeline (status -> not_fit, which the
+    // follow-up cron excludes); potential/nurture continue as audit_ready.
+    const overallScore = computeOverallScore(analysis)
+    const segment = segmentFor(overallScore)
+
     // Update lead with audit results
     const { data: updatedRow } = await supabase
       .from('leads')
       .update({
-        status: 'audit_ready',
+        status: segment === 'not_fit' ? 'not_fit' : 'audit_ready',
+        segment,
+        overall_score: overallScore,
         instagram_score: analysis.instagram_score,
         facebook_score: analysis.facebook_score,
         website_score: analysis.website_score,
@@ -70,8 +79,10 @@ export async function runAuditPipeline(leadId: string): Promise<void> {
       entity_type: 'lead',
       entity_id: leadId,
       event_type: 'system',
-      description: 'Audit completed',
+      description: `Audit completed — ${segment.toUpperCase()} (score ${overallScore ?? 'n/a'}/10)`,
       metadata: {
+        overall_score: overallScore,
+        segment,
         instagram_score: analysis.instagram_score,
         facebook_score: analysis.facebook_score,
         website_score: analysis.website_score,

@@ -8,6 +8,7 @@ import {
   findLeadByPhone,
 } from '@/lib/whatsapp/chat'
 import { generateAgentReply } from '@/lib/whatsapp/agent'
+import { setQualification, recordWhatsAppRead } from '@/lib/leads/qualification'
 
 const clean = (s: string | undefined) => (s ?? '').replace(/^﻿/, '').trim()
 const VERIFY_TOKEN = clean(process.env.WHATSAPP_VERIFY_TOKEN) || 'codemode-verify'
@@ -45,13 +46,26 @@ export async function POST(req: NextRequest) {
   }
 
   const payload = body as {
-    entry?: { changes?: { value?: { contacts?: WaContact[]; messages?: WaMessage[] } }[] }[]
+    entry?: { changes?: { value?: {
+      contacts?: WaContact[]
+      messages?: WaMessage[]
+      statuses?: { id: string; status: string; timestamp: string }[]
+    } }[] }[]
   }
 
   try {
     for (const entry of payload.entry ?? []) {
       for (const change of entry.changes ?? []) {
         const value = change.value
+
+        // Delivery/read receipts for messages WE sent — stamp read time on the lead.
+        for (const st of value?.statuses ?? []) {
+          if (st.status === 'read') {
+            const readAt = new Date(Number(st.timestamp) * 1000).toISOString()
+            await recordWhatsAppRead(st.id, readAt).catch(() => {})
+          }
+        }
+
         if (!value?.messages) continue
 
         const contactName = value.contacts?.[0]?.profile?.name ?? null
@@ -84,6 +98,8 @@ export async function POST(req: NextRequest) {
               event_type: 'system',
               description: `WhatsApp message received: "${text.slice(0, 80)}"`,
             })
+            // They replied → engaged (won't downgrade a booked lead)
+            await setQualification(conv.lead_id, 'engaged', 'replied on WhatsApp').catch(() => {})
           }
 
           // AI auto-reply (within the 24h window, which is open since they just messaged)

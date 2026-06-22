@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 
-const client = new Anthropic()
+// Pass the key explicitly with a BOM strip — the SDK's default env read would
+// otherwise inherit a PowerShell-piped BOM and throw a ByteString header error.
+const client = new Anthropic({ apiKey: (process.env.ANTHROPIC_API_KEY ?? '').replace(/^﻿/, '').trim() })
 
 const PLAN_RATIOS = {
   launch:    { gao_funnel: 30, valuable: 30, case_study: 10, update: 20, social_proof: 5, industry: 5 },

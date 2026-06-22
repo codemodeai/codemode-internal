@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 import { logActivity } from '@/lib/activity'
 import { runAuditPipeline } from '@/lib/audit/pipeline'
@@ -127,10 +127,25 @@ export async function POST(req: Request, { params }: { params: Params }) {
     metadata: { funnel_id: funnelId, funnel_name: funnel.name },
   })
 
-  // Fire audit pipeline + WhatsApp Step 1 in background
+  // Fire audit pipeline + WhatsApp Step 1 after the response is sent.
+  // `after()` keeps the serverless function alive so this background work
+  // actually completes (a bare `void`/fire-and-forget gets killed on Vercel
+  // once the response returns, leaving the lead stuck at status 'new').
   const leadId = (lead as { id: string }).id
-  void runAuditPipeline(leadId)
-  void sendWhatsAppStep({ ...leadData, id: leadId } as unknown as Lead, 1)
+  after(async () => {
+    try {
+      await runAuditPipeline(leadId)
+    } catch (err) {
+      console.error('[Hook] Audit pipeline failed:', err)
+    }
+  })
+  after(async () => {
+    try {
+      await sendWhatsAppStep({ ...leadData, id: leadId } as unknown as Lead, 1)
+    } catch (err) {
+      console.error('[Hook] WhatsApp step 1 failed:', err)
+    }
+  })
 
   return NextResponse.json({ ok: true, lead_id: (lead as { id: string }).id })
 }

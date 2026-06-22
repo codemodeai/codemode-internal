@@ -65,10 +65,33 @@ export interface WhatsAppPayload {
      Buttons:
        • URL button → "📅 Book Free Call"  →  <your Calendly link>  (static URL)
 
+  7) cm_gao_meeting_reminder     Category: UTILITY        ← NEW (Phase 3)
+     Body:
+       Hi {{1}}, your Code Mode strategy call is {{2}}! 📅
+       *When:* {{3}} (IST)
+       *Join link:* {{4}}
+       See you there!
+     NOTES:
+       • One template covers BOTH reminder sends — {{2}} carries the timing
+         phrase ("starting in 30 minutes" for the 30-min reminder, "starting
+         now" for the on-time send). Saves a second Meta approval.
+       • Body does NOT end on a variable (ends "See you there!") to satisfy
+         Meta's rule that bit us on cm_gao_followup_d3.
+       • No buttons — the join link is in the body as {{4}}.
+
   NOTE: When the Calendly URL is fixed (same for everyone), set it as a
   STATIC url button in the template — no runtime parameter needed.
   ════════════════════════════════════════════════════════════════════
 */
+
+function formatIST(iso: string | null, fallback = 'your scheduled time'): string {
+  if (!iso) return fallback
+  return new Date(iso).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+}
 
 export function buildWelcome(lead: Lead): WhatsAppPayload {
   return {
@@ -80,7 +103,9 @@ export function buildWelcome(lead: Lead): WhatsAppPayload {
 export function buildAuditReady(lead: Lead, pdfUrl: string | null): WhatsAppPayload {
   const topGap = lead.gaps?.[0]
   return {
-    templateName: 'cm_gao_audit_ready',
+    // v2 uses quick-reply buttons ("Book my call" / "I have a question") instead of a
+    // URL button — tapping them opens the 24h window so the AI can take over free-form.
+    templateName: 'cm_gao_audit_ready_v2',
     ...(pdfUrl
       ? { headerDocument: { link: pdfUrl, filename: `GAO-Audit-${(lead.business_name ?? lead.name).replace(/\s+/g, '-')}.pdf` } }
       : {}),
@@ -93,16 +118,21 @@ export function buildAuditReady(lead: Lead, pdfUrl: string | null): WhatsAppPayl
 }
 
 export function buildMeetingScheduled(lead: Lead): WhatsAppPayload {
-  const when = lead.call_datetime
-    ? new Date(lead.call_datetime).toLocaleString('en-IN', {
-        timeZone: 'Asia/Kolkata',
-        dateStyle: 'medium',
-        timeStyle: 'short',
-      })
-    : 'your scheduled time'
   return {
     templateName: 'cm_gao_meeting_scheduled',
-    bodyParams: [lead.name, when, lead.call_meet_link ?? CALENDLY],
+    bodyParams: [lead.name, formatIST(lead.call_datetime), lead.call_meet_link ?? CALENDLY],
+  }
+}
+
+export type ReminderPhase = '30m' | 'start'
+
+// Phase 3 meeting reminder. One template, the timing phrase ({{2}}) distinguishes
+// the 30-min-before reminder from the on-time "starting now" send.
+export function buildMeetingReminder(lead: Lead, phase: ReminderPhase): WhatsAppPayload {
+  const timing = phase === '30m' ? 'starting in 30 minutes' : 'starting now'
+  return {
+    templateName: 'cm_gao_meeting_reminder',
+    bodyParams: [lead.name, timing, formatIST(lead.call_datetime), lead.call_meet_link ?? CALENDLY],
   }
 }
 

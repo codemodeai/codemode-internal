@@ -4,7 +4,9 @@ import { sendTemplateMessage, normalizePhone } from './meta-client'
 import {
   buildSequenceTemplate,
   buildMeetingScheduled,
+  buildMeetingReminder,
   type SequenceStep,
+  type ReminderPhase,
   type WhatsAppPayload,
 } from './templates'
 import type { Lead } from '@/types/database'
@@ -110,6 +112,36 @@ export async function sendWhatsAppMeetingConfirmation(lead: Lead): Promise<void>
       event_type: 'system',
       description: 'WhatsApp meeting confirmation sent',
       metadata: { template: payload.templateName, call_datetime: lead.call_datetime },
+    })
+  }
+}
+
+/**
+ * Sends a meeting reminder (Phase 3, fired from the meeting-reminders cron).
+ * `phase` '30m' = 30-minutes-before reminder, 'start' = on-time join link.
+ * Stamps the matching dedupe column so the cron never re-sends the same phase.
+ * Not part of the numbered nurture sequence.
+ */
+export async function sendWhatsAppMeetingReminder(lead: Lead, phase: ReminderPhase): Promise<void> {
+  const payload = buildMeetingReminder(lead, phase)
+  const ok = await dispatch(lead, payload, 0)
+
+  if (ok) {
+    const supabase = createServiceClient()
+    const stampCol = phase === '30m' ? 'reminder_30_sent_at' : 'reminder_start_sent_at'
+    await supabase
+      .from('leads')
+      .update({ [stampCol]: new Date().toISOString() })
+      .eq('id', lead.id)
+
+    await logActivity({
+      entity_type: 'lead',
+      entity_id: lead.id,
+      event_type: 'system',
+      description: phase === '30m'
+        ? 'WhatsApp 30-min meeting reminder sent'
+        : 'WhatsApp meeting start reminder sent',
+      metadata: { template: payload.templateName, phase, call_datetime: lead.call_datetime },
     })
   }
 }
