@@ -136,6 +136,8 @@ export interface Lead {
   reminder_30_sent_at: string | null
   reminder_start_sent_at: string | null
   seen_nudge_sent_at: string | null
+  ai_instructions: string | null
+  quoted_price: string | null
   blueprint_sent: boolean
   blueprint_sent_at: string | null
   blueprint_url: string | null

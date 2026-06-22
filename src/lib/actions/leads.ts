@@ -241,6 +241,28 @@ export async function markCallBooked(leadId: string, datetime: string, meetLink:
   revalidatePath(`/leads/${leadId}`)
 }
 
+export async function saveAiInstructions(leadId: string, instructions: string, quotedPrice: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('leads')
+    .update({
+      ai_instructions: instructions.trim() || null,
+      quoted_price: quotedPrice.trim() || null,
+      last_activity_at: new Date().toISOString(),
+    })
+    .eq('id', leadId)
+  if (error) throw new Error(error.message)
+
+  await logActivity({
+    entity_type: 'lead',
+    entity_id: leadId,
+    event_type: 'operator_action',
+    description: 'AI instructions updated for this lead',
+    metadata: { quoted_price: quotedPrice || null },
+  })
+  revalidatePath(`/leads/${leadId}`)
+}
+
 export async function archiveLead(leadId: string) {
   const supabase = await createClient()
   await supabase.from('leads').update({ archived: true }).eq('id', leadId)

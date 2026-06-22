@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { LEAD_STATUS_COLORS, LEAD_STATUS_LABELS } from '@/lib/constants'
 import type { Lead, LeadStatus } from '@/types/database'
 import LeadActions from '@/components/leads/LeadActions'
+import AiInstructions from '@/components/leads/AiInstructions'
 
 type Params = Promise<{ id: string }>
 type SearchParams = Promise<{ tab?: string }>
@@ -239,6 +240,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
       {tab === 'qualify' && (
         <div className="space-y-5">
           <LeadActions lead={lead} />
+          <AiInstructions lead={lead} />
           {lead.qualification_notes && (
             <InfoCard title="Qualification Notes">
               <p className="text-sm text-cm-text leading-relaxed">{lead.qualification_notes}</p>
