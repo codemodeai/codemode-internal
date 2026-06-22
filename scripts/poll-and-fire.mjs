@@ -12,7 +12,7 @@ const TEMPLATE = 'cm_gao_meeting_reminder'
 const LEAD_ID = 'a26187bb-171b-4e9d-b843-f977eeb28b89'
 const CRON_URL = 'https://codemode-internal-taupe.vercel.app/api/cron/meeting-reminders'
 const INTERVAL_MS = 180_000
-const MAX_MS = 2 * 60 * 60_000
+const MAX_MS = (Number(clean(process.env.POLL_MAX_MIN)) || 120) * 60_000
 
 // Read Supabase creds from .env.local
 const envTxt = fs.readFileSync(new URL('../.env.local', import.meta.url), 'utf8')

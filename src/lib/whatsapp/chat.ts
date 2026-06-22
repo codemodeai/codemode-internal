@@ -14,7 +14,11 @@ export interface Conversation {
   last_message_at: string | null
 }
 
-/** Finds a lead whose stored phone matches (by last 10 digits). */
+/**
+ * Finds a lead by phone (by last 10 digits). Matches against the generated
+ * `phone_digits` column so any stored formatting (spaces, dashes, +country) is
+ * ignored — a lead saved as "+91 90000 00001" still matches inbound "919000000001".
+ */
 export async function findLeadByPhone(phone: string): Promise<Lead | null> {
   const supabase = createServiceClient()
   const last10 = phone.replace(/\D/g, '').slice(-10)
@@ -23,7 +27,7 @@ export async function findLeadByPhone(phone: string): Promise<Lead | null> {
   const { data } = await supabase
     .from('leads')
     .select('*')
-    .ilike('phone', `%${last10}%`)
+    .like('phone_digits', `%${last10}%`)
     .order('created_at', { ascending: false })
     .limit(1)
 

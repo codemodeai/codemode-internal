@@ -104,6 +104,7 @@ export interface Lead {
   name: string
   email: string | null
   phone: string | null
+  phone_digits: string | null // generated: phone stripped to digits (for matching)
   instagram_handle: string | null
   business_name: string | null
   business_type: string | null
