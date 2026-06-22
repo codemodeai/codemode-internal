@@ -79,6 +79,14 @@ export interface WhatsAppPayload {
          Meta's rule that bit us on cm_gao_followup_d3.
        • No buttons — the join link is in the body as {{4}}.
 
+  8) cm_gao_seen_nudge           Category: UTILITY        ← NEW (Phase 3 #6)
+     Body:
+       Hi {{1}}, noticed you checked out your Code Mode growth audit 👀
+       Want us to walk you through turning *{{2}}* into a 90-day growth plan? It is a quick, free call.
+     Buttons:
+       • URL button → "Book Free Call"  →  <your Calendly link>  (static URL)
+     NOTE: fired by the "report read but no reply for 24h" sweep. {{2}} = top gap.
+
   NOTE: When the Calendly URL is fixed (same for everyone), set it as a
   STATIC url button in the template — no runtime parameter needed.
   ════════════════════════════════════════════════════════════════════
@@ -168,6 +176,15 @@ export function buildFollowupD7(lead: Lead): WhatsAppPayload {
   return {
     templateName: 'cm_gao_followup_d7',
     bodyParams: [lead.name],
+  }
+}
+
+// Phase 3 #6 — fired when a lead READ their audit but didn't reply for 24h.
+export function buildSeenNudge(lead: Lead): WhatsAppPayload {
+  const topGap = lead.gaps?.[0]
+  return {
+    templateName: 'cm_gao_seen_nudge',
+    bodyParams: [lead.name, topGap?.gap ?? 'your biggest growth gap'],
   }
 }
 

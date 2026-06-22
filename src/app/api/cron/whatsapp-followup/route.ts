@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { sendWhatsAppStep } from '@/lib/whatsapp/sender'
+import { sendWhatsAppStep, sendWhatsAppSeenNudge } from '@/lib/whatsapp/sender'
 import { setQualification } from '@/lib/leads/qualification'
 import type { Lead } from '@/types/database'
 
@@ -33,6 +33,27 @@ export async function GET(req: Request) {
   for (const s of silent ?? []) {
     await setQualification((s as { id: string }).id, 'no_response', '2 days silent after report')
     qualifiedNoResponse++
+  }
+
+  // --- Seen-but-no-reply nudge (Phase 3 #6): leads who READ a message from us
+  // (read receipt captured) but never replied — still 'pending', not booked —
+  // get one gentle book-a-call nudge 24h after they read it.
+  const oneDayAgo = new Date(Date.now() - 86_400_000).toISOString()
+  const { data: seenSilent } = await supabase
+    .from('leads')
+    .select('*')
+    .eq('qualification_state', 'pending')
+    .eq('call_booked', false)
+    .eq('whatsapp_opted_in', true)
+    .not('phone', 'is', null)
+    .not('whatsapp_last_read_at', 'is', null)
+    .lte('whatsapp_last_read_at', oneDayAgo)
+    .is('seen_nudge_sent_at', null)
+    .not('status', 'in', '("closed_won","closed_lost","not_fit","archived")')
+  let seenNudges = 0
+  for (const row of seenSilent ?? []) {
+    await sendWhatsAppSeenNudge(row as unknown as Lead)
+    seenNudges++
   }
 
   // Fetch all active leads with phone that haven't completed the sequence
@@ -85,6 +106,6 @@ export async function GET(req: Request) {
     }
   }
 
-  console.log(`[WA Cron] Processed ${leads?.length ?? 0} leads, sent ${results.length} messages`)
-  return NextResponse.json({ processed: leads?.length ?? 0, sent: results, qualified_no_response: qualifiedNoResponse })
+  console.log(`[WA Cron] Processed ${leads?.length ?? 0} leads, sent ${results.length} messages, ${seenNudges} seen-nudges`)
+  return NextResponse.json({ processed: leads?.length ?? 0, sent: results, qualified_no_response: qualifiedNoResponse, seen_nudges: seenNudges })
 }

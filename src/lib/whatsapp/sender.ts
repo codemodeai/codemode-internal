@@ -5,6 +5,7 @@ import {
   buildSequenceTemplate,
   buildMeetingScheduled,
   buildMeetingReminder,
+  buildSeenNudge,
   type SequenceStep,
   type ReminderPhase,
   type WhatsAppPayload,
@@ -142,6 +143,31 @@ export async function sendWhatsAppMeetingReminder(lead: Lead, phase: ReminderPha
         ? 'WhatsApp 30-min meeting reminder sent'
         : 'WhatsApp meeting start reminder sent',
       metadata: { template: payload.templateName, phase, call_datetime: lead.call_datetime },
+    })
+  }
+}
+
+/**
+ * Phase 3 #6 — "report seen but no reply" nudge (fired from the daily cron sweep).
+ * Stamps seen_nudge_sent_at so it's only ever sent once per lead.
+ */
+export async function sendWhatsAppSeenNudge(lead: Lead): Promise<void> {
+  const payload = buildSeenNudge(lead)
+  const ok = await dispatch(lead, payload, 0)
+
+  if (ok) {
+    const supabase = createServiceClient()
+    await supabase
+      .from('leads')
+      .update({ seen_nudge_sent_at: new Date().toISOString() })
+      .eq('id', lead.id)
+
+    await logActivity({
+      entity_type: 'lead',
+      entity_id: lead.id,
+      event_type: 'system',
+      description: 'WhatsApp seen-but-no-reply nudge sent',
+      metadata: { template: payload.templateName, read_at: lead.whatsapp_last_read_at },
     })
   }
 }

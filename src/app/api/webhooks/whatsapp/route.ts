@@ -9,9 +9,26 @@ import {
 } from '@/lib/whatsapp/chat'
 import { generateAgentReply } from '@/lib/whatsapp/agent'
 import { setQualification, recordWhatsAppRead } from '@/lib/leads/qualification'
+import { createServiceClient } from '@/lib/supabase/server'
 
 const clean = (s: string | undefined) => (s ?? '').replace(/^﻿/, '').trim()
 const VERIFY_TOKEN = clean(process.env.WHATSAPP_VERIFY_TOKEN) || 'codemode-verify'
+
+// Clear opt-out / not-interested signals → disqualify and stop messaging.
+// Kept conservative so a normal "no thanks for now" doesn't disqualify a warm lead.
+function isOptOut(text: string): boolean {
+  const s = text.toLowerCase()
+  return (
+    /\b(stop|unsubscribe)\b/.test(s) ||
+    /\bopt[\s-]?out\b/.test(s) ||
+    s.includes('not interested') ||
+    s.includes('remove me') ||
+    s.includes('leave me alone') ||
+    s.includes("don't message") ||
+    s.includes('dont message') ||
+    s.includes('do not message')
+  )
+}
 
 // ── Meta webhook verification (GET) ────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -91,6 +108,8 @@ export async function POST(req: NextRequest) {
             waMessageId: msg.id,
           })
 
+          const optedOut = isOptOut(text)
+
           if (conv.lead_id) {
             await logActivity({
               entity_type: 'lead',
@@ -98,12 +117,28 @@ export async function POST(req: NextRequest) {
               event_type: 'system',
               description: `WhatsApp message received: "${text.slice(0, 80)}"`,
             })
-            // They replied → engaged (won't downgrade a booked lead)
-            await setQualification(conv.lead_id, 'engaged', 'replied on WhatsApp').catch(() => {})
+            if (optedOut) {
+              // Clear opt-out → disqualify (terminal) and stop all future sends.
+              await setQualification(conv.lead_id, 'disqualified', 'opted out on WhatsApp').catch(() => {})
+              await createServiceClient()
+                .from('leads')
+                .update({ whatsapp_opted_in: false })
+                .eq('id', conv.lead_id)
+            } else {
+              // They replied → engaged (won't downgrade a booked lead)
+              await setQualification(conv.lead_id, 'engaged', 'replied on WhatsApp').catch(() => {})
+            }
           }
 
-          // AI auto-reply (within the 24h window, which is open since they just messaged)
-          if (conv.ai_enabled) {
+          if (optedOut) {
+            // Acknowledge the opt-out once; do NOT run the AI agent.
+            await sendAndStore(
+              conv,
+              "Done — you won't get any more messages from us. If you ever change your mind, just reply here. 👋",
+              'ai',
+            ).catch(() => {})
+          } else if (conv.ai_enabled) {
+            // AI auto-reply (within the 24h window, which is open since they just messaged)
             try {
               const lead = conv.lead_id ? await findLeadByPhone(conv.phone) : null
               const history = await getHistory(conv.id, 20)
