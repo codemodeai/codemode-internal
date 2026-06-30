@@ -370,6 +370,7 @@ export interface Idea {
   id: string
   title: string
   notes: string | null
+  project: string | null
   status: IdeaStatus
   converted_task_id: string | null
   created_at: string

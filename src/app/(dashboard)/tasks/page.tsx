@@ -1,15 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import type { Task, Idea, TaskStatus } from '@/types/database'
-import NewTaskForm from '@/components/tasks/NewTaskForm'
-import NewIdeaForm from '@/components/tasks/NewIdeaForm'
-import TaskRow from '@/components/tasks/TaskRow'
-import IdeaCard from '@/components/tasks/IdeaCard'
-import { TASK_STATUS_LABELS } from '@/lib/constants'
+import type { Task, Idea } from '@/types/database'
+import TasksTable from '@/components/tasks/TasksTable'
+import IdeasTable from '@/components/tasks/IdeasTable'
 
-type SearchParams = Promise<{ tab?: string; status?: string }>
-
-const TASK_GROUPS: TaskStatus[] = ['todo', 'in_progress', 'done']
+type SearchParams = Promise<{ tab?: string }>
 
 export default async function TasksPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams
@@ -36,24 +31,18 @@ export default async function TasksPage({ searchParams }: { searchParams: Search
   const ideas = (ideasData ?? []) as Idea[]
 
   const openCount = tasks.filter(t => t.status !== 'done').length
-  const tasksByStatus = TASK_GROUPS.reduce<Record<TaskStatus, Task[]>>((acc, s) => {
-    acc[s] = tasks.filter(t => t.status === s)
-    return acc
-  }, { todo: [], in_progress: [], done: [] })
+  const projects = Array.from(new Set(ideas.map(i => i.project).filter((p): p is string => !!p))).sort()
 
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-cm-text">Tasks &amp; Ideas</h1>
-          <p className="text-sm text-cm-muted mt-0.5">
-            {tab === 'tasks' ? `${openCount} open task${openCount === 1 ? '' : 's'}` : `${ideas.length} idea${ideas.length === 1 ? '' : 's'}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {tab === 'tasks' ? <NewTaskForm /> : <NewIdeaForm />}
-        </div>
+      <div>
+        <h1 className="text-xl font-bold text-cm-text">Tasks &amp; Ideas</h1>
+        <p className="text-sm text-cm-muted mt-0.5">
+          {tab === 'tasks'
+            ? `${openCount} open task${openCount === 1 ? '' : 's'}`
+            : `${ideas.length} idea${ideas.length === 1 ? '' : 's'}`}
+        </p>
       </div>
 
       {/* Tabs */}
@@ -68,45 +57,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Search
         </Link>
       </div>
 
-      {/* Tasks tab */}
-      {tab === 'tasks' && (
-        tasks.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm py-16 text-center text-cm-subtle">
-            No tasks yet. Click “+ New Task” to add your first one.
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {TASK_GROUPS.map(status => {
-              const group = tasksByStatus[status]
-              if (group.length === 0) return null
-              return (
-                <div key={status}>
-                  <h2 className="text-sm font-semibold text-cm-muted mb-2 flex items-center gap-2">
-                    {TASK_STATUS_LABELS[status]}
-                    <span className="text-cm-subtle font-normal">({group.length})</span>
-                  </h2>
-                  <div className="bg-white rounded-2xl shadow-sm divide-y divide-gray-50 overflow-hidden">
-                    {group.map(task => <TaskRow key={task.id} task={task} />)}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )
-      )}
-
-      {/* Ideas tab */}
-      {tab === 'ideas' && (
-        ideas.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm py-16 text-center text-cm-subtle">
-            No ideas captured yet. Click “+ New Idea” to jot one down.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {ideas.map(idea => <IdeaCard key={idea.id} idea={idea} />)}
-          </div>
-        )
-      )}
+      {tab === 'tasks' ? <TasksTable tasks={tasks} /> : <IdeasTable ideas={ideas} projects={projects} />}
     </div>
   )
 }

@@ -43,9 +43,14 @@ export async function updateTask(taskId: string, data: {
   notes?: string | null
   priority?: TaskPriority
   due_date?: string | null
+  status?: TaskStatus
 }) {
   const supabase = await createClient()
-  const { error } = await supabase.from('tasks').update(data).eq('id', taskId)
+  const updates: Record<string, unknown> = { ...data }
+  if (data.status !== undefined) {
+    updates.completed_at = data.status === 'done' ? new Date().toISOString() : null
+  }
+  const { error } = await supabase.from('tasks').update(updates).eq('id', taskId)
   if (error) throw new Error(error.message)
   revalidatePath('/tasks')
 }
@@ -59,11 +64,11 @@ export async function deleteTask(taskId: string) {
 
 // ── Ideas ──────────────────────────────────────────────────────────────────
 
-export async function createIdea(data: { title: string; notes?: string | null }) {
+export async function createIdea(data: { title: string; notes?: string | null; project?: string | null }) {
   const supabase = await createClient()
   const { data: idea, error } = await supabase
     .from('ideas')
-    .insert({ title: data.title, notes: data.notes ?? null, status: 'active' as IdeaStatus })
+    .insert({ title: data.title, notes: data.notes ?? null, project: data.project || null, status: 'active' as IdeaStatus })
     .select()
     .single()
   if (error) throw new Error(error.message)
@@ -71,7 +76,7 @@ export async function createIdea(data: { title: string; notes?: string | null })
   return idea
 }
 
-export async function updateIdea(ideaId: string, data: { title?: string; notes?: string | null }) {
+export async function updateIdea(ideaId: string, data: { title?: string; notes?: string | null; project?: string | null }) {
   const supabase = await createClient()
   const { error } = await supabase.from('ideas').update(data).eq('id', ideaId)
   if (error) throw new Error(error.message)
