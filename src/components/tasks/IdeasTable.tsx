@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useRef } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import { createIdea, updateIdea, setIdeaStatus, deleteIdea, convertIdeaToTask } from '@/lib/actions/tasks'
 import type { Idea } from '@/types/database'
 import { useRouter } from 'next/navigation'
@@ -11,6 +11,13 @@ const cellInput =
 
 const PROJECTS_LIST_ID = 'idea-projects-datalist'
 
+// Grow a textarea to fit its content so long idea sentences wrap and show in full.
+function autosize(el: HTMLTextAreaElement | null) {
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
+}
+
 function IdeaTableRow({ idea }: { idea: Idea }) {
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
@@ -18,6 +25,9 @@ function IdeaTableRow({ idea }: { idea: Idea }) {
   const [title, setTitle] = useState(idea.title)
   const [project, setProject] = useState(idea.project ?? '')
   const [expanded, setExpanded] = useState(false)
+  const titleRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => { autosize(titleRef.current) }, [title])
 
   const archived = idea.status === 'archived'
 
@@ -29,19 +39,22 @@ function IdeaTableRow({ idea }: { idea: Idea }) {
     <tr className={`border-b border-gray-50 hover:bg-cm-bg/50 transition-colors ${archived ? 'opacity-60' : ''}`}>
       {/* Idea sentence + mobile collapsible project */}
       <td className="py-1 pl-4 pr-2">
-        <div className="flex items-center">
-          <input
+        <div className="flex items-start">
+          <textarea
+            ref={titleRef}
+            rows={1}
             value={title}
-            onChange={e => setTitle(e.target.value)}
+            onChange={e => { setTitle(e.target.value); autosize(e.target) }}
             onBlur={() => { if (title.trim() && title !== idea.title) run(() => updateIdea(idea.id, { title: title.trim() })) }}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
             placeholder="Idea…"
-            className={`${cellInput} font-medium`}
+            className={`${cellInput} font-medium resize-none overflow-hidden leading-snug`}
           />
           {/* Expand/collapse toggle — mobile only */}
           <button
             type="button"
             onClick={() => setExpanded(v => !v)}
-            className="md:hidden flex-shrink-0 p-1.5 text-cm-subtle hover:text-cm-muted"
+            className="md:hidden flex-shrink-0 p-1.5 mt-0.5 text-cm-subtle hover:text-cm-muted"
             aria-label={expanded ? 'Hide details' : 'Show details'}
             aria-expanded={expanded}
           >

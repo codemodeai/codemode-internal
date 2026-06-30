@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition, useRef } from 'react'
+import { useState, useTransition, useRef, useEffect } from 'react'
 import { createTask, updateTask, setTaskStatus, deleteTask } from '@/lib/actions/tasks'
 import type { Task, TaskPriority, TaskStatus } from '@/types/database'
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS, TASK_PRIORITY_COLORS } from '@/lib/constants'
@@ -12,6 +12,13 @@ const STATUSES: TaskStatus[] = ['todo', 'in_progress', 'done']
 
 const cellInput =
   'w-full bg-transparent text-sm text-cm-text placeholder-cm-subtle px-2 py-1.5 rounded-md focus:outline-none focus:bg-cm-bg focus:ring-1 focus:ring-cm-blue/40'
+
+// Grow a textarea to fit its content so long task titles wrap and show in full.
+function autosize(el: HTMLTextAreaElement | null) {
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = `${el.scrollHeight}px`
+}
 const cellSelect =
   'w-full bg-transparent text-xs text-cm-text px-1.5 py-1.5 rounded-md focus:outline-none focus:bg-cm-bg focus:ring-1 focus:ring-cm-blue/40 cursor-pointer'
 
@@ -22,6 +29,10 @@ function TaskTableRow({ task }: { task: Task }) {
   const [title, setTitle] = useState(task.title)
   const [notes, setNotes] = useState(task.notes ?? '')
   const [expanded, setExpanded] = useState(false)
+  const titleRef = useRef<HTMLTextAreaElement>(null)
+
+  // Keep the title textarea sized to its content (wraps long sentences).
+  useEffect(() => { autosize(titleRef.current) }, [title])
 
   const done = task.status === 'done'
   const pc = TASK_PRIORITY_COLORS[task.priority]
@@ -46,19 +57,22 @@ function TaskTableRow({ task }: { task: Task }) {
 
       {/* Task title + mobile collapsible details (priority/status/date/remarks) */}
       <td className="py-1 pr-2">
-        <div className="flex items-center">
-          <input
+        <div className="flex items-start">
+          <textarea
+            ref={titleRef}
+            rows={1}
             value={title}
-            onChange={e => setTitle(e.target.value)}
+            onChange={e => { setTitle(e.target.value); autosize(e.target) }}
             onBlur={() => { if (title.trim() && title !== task.title) run(() => updateTask(task.id, { title: title.trim() })) }}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
             placeholder="Task…"
-            className={`${cellInput} font-medium ${done ? 'line-through text-cm-subtle' : ''}`}
+            className={`${cellInput} font-medium resize-none overflow-hidden leading-snug ${done ? 'line-through text-cm-subtle' : ''}`}
           />
           {/* Expand/collapse toggle — mobile only */}
           <button
             type="button"
             onClick={() => setExpanded(v => !v)}
-            className="md:hidden flex-shrink-0 p-1.5 text-cm-subtle hover:text-cm-muted"
+            className="md:hidden flex-shrink-0 p-1.5 mt-0.5 text-cm-subtle hover:text-cm-muted"
             aria-label={expanded ? 'Hide details' : 'Show details'}
             aria-expanded={expanded}
           >
