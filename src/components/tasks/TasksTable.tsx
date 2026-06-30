@@ -1,17 +1,52 @@
 'use client'
 
 import { useState, useTransition, useRef, useEffect } from 'react'
-import { createTask, updateTask, setTaskStatus, deleteTask } from '@/lib/actions/tasks'
+import { createTask, updateTask, setTaskStatus, deleteTask, reorderTasks } from '@/lib/actions/tasks'
 import type { Task, TaskPriority, TaskStatus } from '@/types/database'
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS, TASK_PRIORITY_COLORS } from '@/lib/constants'
 import { useRouter } from 'next/navigation'
-import { Check, Trash2, Plus, ChevronDown } from 'lucide-react'
+import { Check, Trash2, Plus, ChevronDown, GripVertical } from 'lucide-react'
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
 const STATUSES: TaskStatus[] = ['todo', 'in_progress', 'done']
 
+type SortKey = 'custom' | 'name' | 'date' | 'priority' | 'status'
+const SORT_LABELS: Record<SortKey, string> = {
+  custom: 'Manual order', name: 'Name', date: 'Date', priority: 'Priority', status: 'Status',
+}
+const PRIORITY_RANK: Record<TaskPriority, number> = { high: 0, medium: 1, low: 2 }
+const STATUS_RANK: Record<TaskStatus, number> = { todo: 0, in_progress: 1, done: 2 }
+
+function sortTasks(tasks: Task[], key: SortKey): Task[] {
+  if (key === 'custom') return tasks
+  const copy = [...tasks]
+  copy.sort((a, b) => {
+    switch (key) {
+      case 'name': return a.title.localeCompare(b.title)
+      case 'date':
+        if (!a.due_date && !b.due_date) return 0
+        if (!a.due_date) return 1
+        if (!b.due_date) return -1
+        return a.due_date.localeCompare(b.due_date)
+      case 'priority': return PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]
+      case 'status': return STATUS_RANK[a.status] - STATUS_RANK[b.status]
+      default: return 0
+    }
+  })
+  return copy
+}
+
 const cellInput =
   'w-full bg-transparent text-sm text-cm-text placeholder-cm-subtle px-2 py-1.5 rounded-md focus:outline-none focus:bg-cm-bg focus:ring-1 focus:ring-cm-blue/40'
+const cellSelect =
+  'w-full bg-transparent text-xs text-cm-text px-1.5 py-1.5 rounded-md focus:outline-none focus:bg-cm-bg focus:ring-1 focus:ring-cm-blue/40 cursor-pointer'
 
 // Grow a textarea to fit its content so long task titles wrap and show in full.
 function autosize(el: HTMLTextAreaElement | null) {
@@ -19,10 +54,8 @@ function autosize(el: HTMLTextAreaElement | null) {
   el.style.height = 'auto'
   el.style.height = `${el.scrollHeight}px`
 }
-const cellSelect =
-  'w-full bg-transparent text-xs text-cm-text px-1.5 py-1.5 rounded-md focus:outline-none focus:bg-cm-bg focus:ring-1 focus:ring-cm-blue/40 cursor-pointer'
 
-function TaskTableRow({ task }: { task: Task }) {
+function TaskTableRow({ task, dragEnabled }: { task: Task; dragEnabled: boolean }) {
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -30,6 +63,10 @@ function TaskTableRow({ task }: { task: Task }) {
   const [notes, setNotes] = useState(task.notes ?? '')
   const [expanded, setExpanded] = useState(false)
   const titleRef = useRef<HTMLTextAreaElement>(null)
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: task.id, disabled: !dragEnabled })
+  const style = { transform: CSS.Transform.toString(transform), transition }
 
   // Keep the title textarea sized to its content (wraps long sentences).
   useEffect(() => { autosize(titleRef.current) }, [title])
@@ -42,9 +79,27 @@ function TaskTableRow({ task }: { task: Task }) {
   }
 
   return (
-    <tr className={`border-b border-gray-50 hover:bg-cm-bg/50 transition-colors ${done ? 'opacity-60' : ''}`}>
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`border-b border-gray-50 hover:bg-cm-bg/50 transition-colors ${done ? 'opacity-60' : ''} ${isDragging ? 'bg-white shadow-lg relative z-10' : ''}`}
+    >
+      {/* Drag handle */}
+      <td className="pl-2 pr-0 py-1.5 w-7">
+        {dragEnabled && (
+          <button
+            {...attributes}
+            {...listeners}
+            className="touch-none cursor-grab active:cursor-grabbing text-cm-border hover:text-cm-muted p-0.5"
+            aria-label="Drag to reorder"
+          >
+            <GripVertical size={15} />
+          </button>
+        )}
+      </td>
+
       {/* Complete toggle */}
-      <td className="pl-4 pr-1 py-1.5 w-9">
+      <td className="pr-1 py-1.5 w-8">
         <button
           onClick={() => run(() => setTaskStatus(task.id, done ? 'todo' : 'done'))}
           disabled={isPending}
@@ -211,7 +266,8 @@ function AddTaskRow() {
 
   return (
     <tr className="border-t border-cm-border bg-cm-bg/30">
-      <td className="pl-4 pr-1 py-1.5 w-9 text-cm-subtle">
+      <td className="w-7" />
+      <td className="pr-1 py-1.5 w-8 text-cm-subtle">
         <Plus size={16} />
       </td>
       <td className="py-1.5 pr-2" colSpan={6}>
@@ -231,25 +287,71 @@ function AddTaskRow() {
 }
 
 export default function TasksTable({ tasks }: { tasks: Task[] }) {
+  const [items, setItems] = useState<Task[]>(tasks)
+  const [sortBy, setSortBy] = useState<SortKey>('custom')
+  const [, startTransition] = useTransition()
+
+  // Re-sync when the server sends new data (after edits/adds/deletes).
+  useEffect(() => { setItems(tasks) }, [tasks])
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+  const dragEnabled = sortBy === 'custom'
+  const displayed = sortTasks(items, sortBy)
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = items.findIndex(t => t.id === active.id)
+    const newIndex = items.findIndex(t => t.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    const next = arrayMove(items, oldIndex, newIndex)
+    setItems(next) // optimistic
+    startTransition(() => { void reorderTasks(next.map(t => t.id)) })
+  }
+
   return (
-    <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
-      <table className="w-full md:min-w-[680px]">
-        <thead>
-          <tr className="border-b border-cm-border bg-cm-bg text-left">
-            <th className="pl-4 pr-1 py-2.5 w-9" />
-            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide">Task</th>
-            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide hidden md:table-cell">Priority</th>
-            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide hidden md:table-cell">Status</th>
-            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide hidden md:table-cell">Date</th>
-            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide hidden md:table-cell">Remarks</th>
-            <th className="pr-3 pl-1 py-2.5 w-10" />
-          </tr>
-        </thead>
-        <tbody>
-          {tasks.map(task => <TaskTableRow key={task.id} task={task} />)}
-          <AddTaskRow />
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      {/* Toolbar */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-cm-muted">Sort by</span>
+        <select
+          value={sortBy}
+          onChange={e => setSortBy(e.target.value as SortKey)}
+          className="bg-white border border-cm-border rounded-lg px-2.5 py-1.5 text-xs font-medium text-cm-text shadow-sm focus:outline-none focus:ring-2 focus:ring-cm-blue cursor-pointer"
+        >
+          {(Object.keys(SORT_LABELS) as SortKey[]).map(k => (
+            <option key={k} value={k}>{SORT_LABELS[k]}</option>
+          ))}
+        </select>
+        {!dragEnabled && (
+          <span className="text-[11px] text-cm-subtle">Switch to “Manual order” to drag &amp; reorder</span>
+        )}
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
+        <table className="w-full md:min-w-[680px]">
+          <thead>
+            <tr className="border-b border-cm-border bg-cm-bg text-left">
+              <th className="w-7" />
+              <th className="pr-1 py-2.5 w-8" />
+              <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide">Task</th>
+              <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide hidden md:table-cell">Priority</th>
+              <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide hidden md:table-cell">Status</th>
+              <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide hidden md:table-cell">Date</th>
+              <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide hidden md:table-cell">Remarks</th>
+              <th className="pr-3 pl-1 py-2.5 w-10" />
+            </tr>
+          </thead>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={displayed.map(t => t.id)} strategy={verticalListSortingStrategy}>
+              <tbody>
+                {displayed.map(task => <TaskTableRow key={task.id} task={task} dragEnabled={dragEnabled} />)}
+                <AddTaskRow />
+              </tbody>
+            </SortableContext>
+          </DndContext>
+        </table>
+      </div>
     </div>
   )
 }

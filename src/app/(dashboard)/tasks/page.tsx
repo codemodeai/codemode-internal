@@ -15,8 +15,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Search
     supabase
       .from('tasks')
       .select('*')
-      .order('status', { ascending: true })
-      .order('due_date', { ascending: true, nullsFirst: false })
+      .order('position', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false })
       .limit(500),
     supabase

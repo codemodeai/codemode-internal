@@ -13,6 +13,15 @@ export async function createTask(data: {
   due_date?: string | null
 }) {
   const supabase = await createClient()
+  // Place new tasks at the bottom of the custom order.
+  const { data: last } = await supabase
+    .from('tasks')
+    .select('position')
+    .order('position', { ascending: false, nullsFirst: false })
+    .limit(1)
+    .maybeSingle()
+  const nextPosition = (last?.position ?? 0) + 1
+
   const { data: task, error } = await supabase
     .from('tasks')
     .insert({
@@ -21,12 +30,24 @@ export async function createTask(data: {
       priority: data.priority ?? 'medium',
       due_date: data.due_date || null,
       status: 'todo' as TaskStatus,
+      position: nextPosition,
     })
     .select()
     .single()
   if (error) throw new Error(error.message)
   revalidatePath('/tasks')
   return task
+}
+
+// Persist a manual drag-reorder: write each id's new position by array index.
+export async function reorderTasks(orderedIds: string[]) {
+  const supabase = await createClient()
+  await Promise.all(
+    orderedIds.map((id, index) =>
+      supabase.from('tasks').update({ position: index + 1 }).eq('id', id)
+    )
+  )
+  revalidatePath('/tasks')
 }
 
 export async function setTaskStatus(taskId: string, status: TaskStatus) {
