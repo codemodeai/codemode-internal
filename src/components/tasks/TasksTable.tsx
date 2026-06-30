@@ -5,7 +5,7 @@ import { createTask, updateTask, setTaskStatus, deleteTask } from '@/lib/actions
 import type { Task, TaskPriority, TaskStatus } from '@/types/database'
 import { TASK_PRIORITY_LABELS, TASK_STATUS_LABELS, TASK_PRIORITY_COLORS } from '@/lib/constants'
 import { useRouter } from 'next/navigation'
-import { Check, Trash2, Plus } from 'lucide-react'
+import { Check, Trash2, Plus, ChevronDown } from 'lucide-react'
 
 const PRIORITIES: TaskPriority[] = ['low', 'medium', 'high']
 const STATUSES: TaskStatus[] = ['todo', 'in_progress', 'done']
@@ -21,6 +21,7 @@ function TaskTableRow({ task }: { task: Task }) {
 
   const [title, setTitle] = useState(task.title)
   const [notes, setNotes] = useState(task.notes ?? '')
+  const [expanded, setExpanded] = useState(false)
 
   const done = task.status === 'done'
   const pc = TASK_PRIORITY_COLORS[task.priority]
@@ -43,42 +44,76 @@ function TaskTableRow({ task }: { task: Task }) {
         </button>
       </td>
 
-      {/* Task title (+ compact priority/status/date controls on mobile) */}
+      {/* Task title + mobile collapsible details (priority/status/date/remarks) */}
       <td className="py-1 pr-2">
-        <input
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          onBlur={() => { if (title.trim() && title !== task.title) run(() => updateTask(task.id, { title: title.trim() })) }}
-          placeholder="Task…"
-          className={`${cellInput} font-medium ${done ? 'line-through text-cm-subtle' : ''}`}
-        />
-        {/* Mobile-only compact controls — the dedicated columns are hidden < md */}
-        <div className="flex items-center gap-1.5 px-2 pb-1 md:hidden">
-          <select
-            value={task.priority}
-            onChange={e => run(() => updateTask(task.id, { priority: e.target.value as TaskPriority }))}
-            disabled={isPending}
-            className={`text-[11px] font-medium rounded-full border px-1.5 py-0.5 focus:outline-none cursor-pointer ${pc.bg} ${pc.text} ${pc.border}`}
-          >
-            {PRIORITIES.map(p => <option key={p} value={p}>{TASK_PRIORITY_LABELS[p]}</option>)}
-          </select>
-          <select
-            value={task.status}
-            onChange={e => run(() => setTaskStatus(task.id, e.target.value as TaskStatus))}
-            disabled={isPending}
-            className="text-[11px] text-cm-muted bg-cm-bg rounded-full px-1.5 py-0.5 focus:outline-none cursor-pointer"
-          >
-            {STATUSES.map(s => <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>)}
-          </select>
+        <div className="flex items-center">
           <input
-            type="date"
-            value={task.due_date ?? ''}
-            onChange={e => run(() => updateTask(task.id, { due_date: e.target.value || null }))}
-            onKeyDown={e => e.preventDefault()}
-            onMouseDown={e => { e.preventDefault(); (e.currentTarget as HTMLInputElement).focus(); try { (e.currentTarget as HTMLInputElement).showPicker() } catch {} }}
-            className="text-[11px] text-cm-muted bg-transparent focus:outline-none cursor-pointer"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            onBlur={() => { if (title.trim() && title !== task.title) run(() => updateTask(task.id, { title: title.trim() })) }}
+            placeholder="Task…"
+            className={`${cellInput} font-medium ${done ? 'line-through text-cm-subtle' : ''}`}
           />
+          {/* Expand/collapse toggle — mobile only */}
+          <button
+            type="button"
+            onClick={() => setExpanded(v => !v)}
+            className="md:hidden flex-shrink-0 p-1.5 text-cm-subtle hover:text-cm-muted"
+            aria-label={expanded ? 'Hide details' : 'Show details'}
+            aria-expanded={expanded}
+          >
+            <ChevronDown size={16} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          </button>
         </div>
+
+        {/* Collapsible details — mobile only, the dedicated columns are hidden < md */}
+        {expanded && (
+          <div className="md:hidden mt-1 mb-1.5 mx-1 px-2 py-2 space-y-2 bg-cm-bg rounded-lg">
+            <label className="flex items-center gap-2">
+              <span className="text-[11px] font-medium text-cm-subtle w-16 flex-shrink-0">Priority</span>
+              <select
+                value={task.priority}
+                onChange={e => run(() => updateTask(task.id, { priority: e.target.value as TaskPriority }))}
+                disabled={isPending}
+                className={`text-xs font-medium rounded-full border px-2 py-0.5 focus:outline-none cursor-pointer ${pc.bg} ${pc.text} ${pc.border}`}
+              >
+                {PRIORITIES.map(p => <option key={p} value={p}>{TASK_PRIORITY_LABELS[p]}</option>)}
+              </select>
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="text-[11px] font-medium text-cm-subtle w-16 flex-shrink-0">Status</span>
+              <select
+                value={task.status}
+                onChange={e => run(() => setTaskStatus(task.id, e.target.value as TaskStatus))}
+                disabled={isPending}
+                className="text-xs text-cm-text bg-white border border-cm-border rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+              >
+                {STATUSES.map(s => <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>)}
+              </select>
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="text-[11px] font-medium text-cm-subtle w-16 flex-shrink-0">Date</span>
+              <input
+                type="date"
+                value={task.due_date ?? ''}
+                onChange={e => run(() => updateTask(task.id, { due_date: e.target.value || null }))}
+                onKeyDown={e => e.preventDefault()}
+                onMouseDown={e => { e.preventDefault(); (e.currentTarget as HTMLInputElement).focus(); try { (e.currentTarget as HTMLInputElement).showPicker() } catch {} }}
+                className="text-xs text-cm-text bg-white border border-cm-border rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="text-[11px] font-medium text-cm-subtle w-16 flex-shrink-0">Remarks</span>
+              <input
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                onBlur={() => { if (notes !== (task.notes ?? '')) run(() => updateTask(task.id, { notes: notes.trim() || null })) }}
+                placeholder="Remarks…"
+                className="flex-1 min-w-0 text-xs text-cm-text bg-white border border-cm-border rounded-lg px-2 py-1 focus:outline-none"
+              />
+            </label>
+          </div>
+        )}
       </td>
 
       {/* Priority */}

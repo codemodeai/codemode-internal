@@ -4,7 +4,7 @@ import { useState, useTransition, useRef } from 'react'
 import { createIdea, updateIdea, setIdeaStatus, deleteIdea, convertIdeaToTask } from '@/lib/actions/tasks'
 import type { Idea } from '@/types/database'
 import { useRouter } from 'next/navigation'
-import { Trash2, Plus, ListChecks, Archive, ArchiveRestore } from 'lucide-react'
+import { Trash2, Plus, ListChecks, Archive, ArchiveRestore, ChevronDown } from 'lucide-react'
 
 const cellInput =
   'w-full bg-transparent text-sm text-cm-text placeholder-cm-subtle px-2 py-1.5 rounded-md focus:outline-none focus:bg-cm-bg focus:ring-1 focus:ring-cm-blue/40'
@@ -17,6 +17,7 @@ function IdeaTableRow({ idea }: { idea: Idea }) {
 
   const [title, setTitle] = useState(idea.title)
   const [project, setProject] = useState(idea.project ?? '')
+  const [expanded, setExpanded] = useState(false)
 
   const archived = idea.status === 'archived'
 
@@ -26,24 +27,44 @@ function IdeaTableRow({ idea }: { idea: Idea }) {
 
   return (
     <tr className={`border-b border-gray-50 hover:bg-cm-bg/50 transition-colors ${archived ? 'opacity-60' : ''}`}>
-      {/* Idea sentence (+ compact project field on mobile) */}
+      {/* Idea sentence + mobile collapsible project */}
       <td className="py-1 pl-4 pr-2">
-        <input
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          onBlur={() => { if (title.trim() && title !== idea.title) run(() => updateIdea(idea.id, { title: title.trim() })) }}
-          placeholder="Idea…"
-          className={`${cellInput} font-medium`}
-        />
-        {/* Mobile-only project field — the dedicated column is hidden < md */}
-        <input
-          list={PROJECTS_LIST_ID}
-          value={project}
-          onChange={e => setProject(e.target.value)}
-          onBlur={() => { if (project !== (idea.project ?? '')) run(() => updateIdea(idea.id, { project: project.trim() || null })) }}
-          placeholder="Project…"
-          className="md:hidden w-full bg-transparent text-[11px] text-cm-muted placeholder-cm-subtle px-2 pb-1 focus:outline-none"
-        />
+        <div className="flex items-center">
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            onBlur={() => { if (title.trim() && title !== idea.title) run(() => updateIdea(idea.id, { title: title.trim() })) }}
+            placeholder="Idea…"
+            className={`${cellInput} font-medium`}
+          />
+          {/* Expand/collapse toggle — mobile only */}
+          <button
+            type="button"
+            onClick={() => setExpanded(v => !v)}
+            className="md:hidden flex-shrink-0 p-1.5 text-cm-subtle hover:text-cm-muted"
+            aria-label={expanded ? 'Hide details' : 'Show details'}
+            aria-expanded={expanded}
+          >
+            <ChevronDown size={16} className={`transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          </button>
+        </div>
+
+        {/* Collapsible details — mobile only, the dedicated column is hidden < md */}
+        {expanded && (
+          <div className="md:hidden mt-1 mb-1.5 mx-1 px-2 py-2 bg-cm-bg rounded-lg">
+            <label className="flex items-center gap-2">
+              <span className="text-[11px] font-medium text-cm-subtle w-16 flex-shrink-0">Project</span>
+              <input
+                list={PROJECTS_LIST_ID}
+                value={project}
+                onChange={e => setProject(e.target.value)}
+                onBlur={() => { if (project !== (idea.project ?? '')) run(() => updateIdea(idea.id, { project: project.trim() || null })) }}
+                placeholder="Project…"
+                className="flex-1 min-w-0 text-xs text-cm-text bg-white border border-cm-border rounded-lg px-2 py-1 focus:outline-none"
+              />
+            </label>
+          </div>
+        )}
       </td>
 
       {/* Project (new or existing) */}
