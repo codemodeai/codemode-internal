@@ -1,1 +1,1 @@
-{"crons":[{"path":"/api/cron/whatsapp-followup","schedule":"0 6 * * *"}]}
+{"regions":["bom1"],"crons":[{"path":"/api/cron/whatsapp-followup","schedule":"0 6 * * *"}]}
