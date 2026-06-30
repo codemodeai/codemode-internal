@@ -26,7 +26,7 @@ function IdeaTableRow({ idea }: { idea: Idea }) {
 
   return (
     <tr className={`border-b border-gray-50 hover:bg-cm-bg/50 transition-colors ${archived ? 'opacity-60' : ''}`}>
-      {/* Idea sentence */}
+      {/* Idea sentence (+ compact project field on mobile) */}
       <td className="py-1 pl-4 pr-2">
         <input
           value={title}
@@ -35,10 +35,19 @@ function IdeaTableRow({ idea }: { idea: Idea }) {
           placeholder="Idea…"
           className={`${cellInput} font-medium`}
         />
+        {/* Mobile-only project field — the dedicated column is hidden < md */}
+        <input
+          list={PROJECTS_LIST_ID}
+          value={project}
+          onChange={e => setProject(e.target.value)}
+          onBlur={() => { if (project !== (idea.project ?? '')) run(() => updateIdea(idea.id, { project: project.trim() || null })) }}
+          placeholder="Project…"
+          className="md:hidden w-full bg-transparent text-[11px] text-cm-muted placeholder-cm-subtle px-2 pb-1 focus:outline-none"
+        />
       </td>
 
       {/* Project (new or existing) */}
-      <td className="py-1 pr-2 w-56">
+      <td className="py-1 pr-2 w-56 hidden md:table-cell">
         <input
           list={PROJECTS_LIST_ID}
           value={project}
@@ -115,8 +124,18 @@ function AddIdeaRow() {
             className="w-full bg-transparent text-sm text-cm-text placeholder-cm-subtle px-2 py-1.5 rounded-md focus:outline-none focus:bg-white focus:ring-1 focus:ring-cm-blue/40"
           />
         </div>
+        {/* Mobile-only project field for the add row */}
+        <input
+          list={PROJECTS_LIST_ID}
+          value={project}
+          onChange={e => setProject(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') add() }}
+          disabled={isPending}
+          placeholder="Project…"
+          className="md:hidden w-full bg-transparent text-[11px] text-cm-muted placeholder-cm-subtle px-2 pb-1 pl-7 focus:outline-none"
+        />
       </td>
-      <td className="py-1.5 pr-2 w-56">
+      <td className="py-1.5 pr-2 w-56 hidden md:table-cell">
         <input
           list={PROJECTS_LIST_ID}
           value={project}
@@ -139,11 +158,11 @@ export default function IdeasTable({ ideas, projects }: { ideas: Idea[]; project
       <datalist id={PROJECTS_LIST_ID}>
         {projects.map(p => <option key={p} value={p} />)}
       </datalist>
-      <table className="w-full min-w-[520px]">
+      <table className="w-full md:min-w-[520px]">
         <thead>
           <tr className="border-b border-cm-border bg-cm-bg text-left">
             <th className="px-2 py-2.5 pl-4 text-xs font-semibold text-cm-muted uppercase tracking-wide">Idea</th>
-            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide">Project</th>
+            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide hidden md:table-cell">Project</th>
             <th className="pr-3 pl-1 py-2.5 w-32" />
           </tr>
         </thead>

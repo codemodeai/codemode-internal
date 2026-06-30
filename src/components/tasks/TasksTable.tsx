@@ -43,7 +43,7 @@ function TaskTableRow({ task }: { task: Task }) {
         </button>
       </td>
 
-      {/* Task title */}
+      {/* Task title (+ compact priority/status/date controls on mobile) */}
       <td className="py-1 pr-2">
         <input
           value={title}
@@ -52,10 +52,37 @@ function TaskTableRow({ task }: { task: Task }) {
           placeholder="Task…"
           className={`${cellInput} font-medium ${done ? 'line-through text-cm-subtle' : ''}`}
         />
+        {/* Mobile-only compact controls — the dedicated columns are hidden < md */}
+        <div className="flex items-center gap-1.5 px-2 pb-1 md:hidden">
+          <select
+            value={task.priority}
+            onChange={e => run(() => updateTask(task.id, { priority: e.target.value as TaskPriority }))}
+            disabled={isPending}
+            className={`text-[11px] font-medium rounded-full border px-1.5 py-0.5 focus:outline-none cursor-pointer ${pc.bg} ${pc.text} ${pc.border}`}
+          >
+            {PRIORITIES.map(p => <option key={p} value={p}>{TASK_PRIORITY_LABELS[p]}</option>)}
+          </select>
+          <select
+            value={task.status}
+            onChange={e => run(() => setTaskStatus(task.id, e.target.value as TaskStatus))}
+            disabled={isPending}
+            className="text-[11px] text-cm-muted bg-cm-bg rounded-full px-1.5 py-0.5 focus:outline-none cursor-pointer"
+          >
+            {STATUSES.map(s => <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>)}
+          </select>
+          <input
+            type="date"
+            value={task.due_date ?? ''}
+            onChange={e => run(() => updateTask(task.id, { due_date: e.target.value || null }))}
+            onKeyDown={e => e.preventDefault()}
+            onMouseDown={e => { e.preventDefault(); (e.currentTarget as HTMLInputElement).focus(); try { (e.currentTarget as HTMLInputElement).showPicker() } catch {} }}
+            className="text-[11px] text-cm-muted bg-transparent focus:outline-none cursor-pointer"
+          />
+        </div>
       </td>
 
       {/* Priority */}
-      <td className="py-1 pr-2 w-28">
+      <td className="py-1 pr-2 w-28 hidden md:table-cell">
         <select
           value={task.priority}
           onChange={e => run(() => updateTask(task.id, { priority: e.target.value as TaskPriority }))}
@@ -67,7 +94,7 @@ function TaskTableRow({ task }: { task: Task }) {
       </td>
 
       {/* Status */}
-      <td className="py-1 pr-2 w-32">
+      <td className="py-1 pr-2 w-32 hidden md:table-cell">
         <select
           value={task.status}
           onChange={e => run(() => setTaskStatus(task.id, e.target.value as TaskStatus))}
@@ -79,7 +106,7 @@ function TaskTableRow({ task }: { task: Task }) {
       </td>
 
       {/* Date — calendar picker only, no typing */}
-      <td className="py-1 pr-2 w-36">
+      <td className="py-1 pr-2 w-36 hidden md:table-cell">
         <input
           type="date"
           value={task.due_date ?? ''}
@@ -91,7 +118,7 @@ function TaskTableRow({ task }: { task: Task }) {
       </td>
 
       {/* Remarks */}
-      <td className="py-1 pr-2">
+      <td className="py-1 pr-2 hidden md:table-cell">
         <input
           value={notes}
           onChange={e => setNotes(e.target.value)}
@@ -157,15 +184,15 @@ function AddTaskRow() {
 export default function TasksTable({ tasks }: { tasks: Task[] }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
-      <table className="w-full min-w-[680px]">
+      <table className="w-full md:min-w-[680px]">
         <thead>
           <tr className="border-b border-cm-border bg-cm-bg text-left">
             <th className="pl-4 pr-1 py-2.5 w-9" />
             <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide">Task</th>
-            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide">Priority</th>
-            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide">Status</th>
-            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide">Date</th>
-            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide">Remarks</th>
+            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide hidden md:table-cell">Priority</th>
+            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide hidden md:table-cell">Status</th>
+            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide hidden md:table-cell">Date</th>
+            <th className="px-2 py-2.5 text-xs font-semibold text-cm-muted uppercase tracking-wide hidden md:table-cell">Remarks</th>
             <th className="pr-3 pl-1 py-2.5 w-10" />
           </tr>
         </thead>
