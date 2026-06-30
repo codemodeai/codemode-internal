@@ -11,16 +11,18 @@ import {
   Activity,
   Webhook,
   MessageCircle,
+  CheckSquare,
 } from 'lucide-react'
 
 const NAV = [
-  { href: '/',         label: 'Dashboard',  icon: LayoutDashboard },
-  { href: '/funnels',  label: 'Funnels',    icon: Webhook },
-  { href: '/leads',    label: 'Leads',      icon: Users },
-  { href: '/inbox',    label: 'WhatsApp',   icon: MessageCircle },
-  { href: '/clients',  label: 'Clients',    icon: Briefcase },
-  { href: '/content',  label: 'Content',    icon: CalendarDays },
-  { href: '/settings', label: 'Settings',   icon: Settings },
+  { href: '/',         label: 'Dashboard',     icon: LayoutDashboard },
+  { href: '/funnels',  label: 'Funnels',       icon: Webhook },
+  { href: '/leads',    label: 'Leads',         icon: Users },
+  { href: '/inbox',    label: 'WhatsApp',      icon: MessageCircle },
+  { href: '/clients',  label: 'Clients',       icon: Briefcase },
+  { href: '/content',  label: 'Content',       icon: CalendarDays },
+  { href: '/tasks',    label: 'Tasks & Ideas', icon: CheckSquare },
+  { href: '/settings', label: 'Settings',      icon: Settings },
 ]
 
 export default function Sidebar() {

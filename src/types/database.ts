@@ -44,6 +44,12 @@ export type ContentStatus =
 
 export type ContentPlanType = 'launch' | 'authority' | 'results' | 'custom'
 
+export type TaskStatus = 'todo' | 'in_progress' | 'done'
+
+export type TaskPriority = 'low' | 'medium' | 'high'
+
+export type IdeaStatus = 'active' | 'archived' | 'converted'
+
 export type ActivityEntityType = 'lead' | 'client' | 'project' | 'content_item'
 
 export type ActivityEventType =
@@ -346,4 +352,26 @@ export interface FunnelEvent {
   status: 'processed' | 'error' | 'ignored'
   lead_id: string | null
   error_message: string | null
+}
+
+export interface Task {
+  id: string
+  title: string
+  notes: string | null
+  status: TaskStatus
+  priority: TaskPriority
+  due_date: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Idea {
+  id: string
+  title: string
+  notes: string | null
+  status: IdeaStatus
+  converted_task_id: string | null
+  created_at: string
+  updated_at: string
 }

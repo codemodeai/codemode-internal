@@ -1,4 +1,4 @@
-import type { ContentPillar, LeadStatus } from '@/types/database'
+import type { ContentPillar, LeadStatus, TaskStatus, TaskPriority } from '@/types/database'
 
 export const PILLAR_COLORS: Record<ContentPillar, { bg: string; text: string; border: string }> = {
   valuable:     { bg: 'bg-blue-100',   text: 'text-blue-700',   border: 'border-blue-200' },
@@ -49,3 +49,27 @@ export const PIPELINE_STAGES: LeadStatus[] = [
 ]
 
 export const CALENDLY_LINK = process.env.NEXT_PUBLIC_CALENDLY_LINK ?? 'https://calendly.com/codemodeai'
+
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  todo:        'To Do',
+  in_progress: 'In Progress',
+  done:        'Done',
+}
+
+export const TASK_STATUS_COLORS: Record<TaskStatus, { bg: string; text: string }> = {
+  todo:        { bg: 'bg-gray-100',    text: 'text-gray-600' },
+  in_progress: { bg: 'bg-cm-blue-light', text: 'text-cm-blue' },
+  done:        { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+}
+
+export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
+  low:    'Low',
+  medium: 'Medium',
+  high:   'High',
+}
+
+export const TASK_PRIORITY_COLORS: Record<TaskPriority, { bg: string; text: string; border: string }> = {
+  low:    { bg: 'bg-slate-50',  text: 'text-slate-500', border: 'border-slate-200' },
+  medium: { bg: 'bg-amber-50',  text: 'text-amber-700', border: 'border-amber-200' },
+  high:   { bg: 'bg-red-50',    text: 'text-red-600',   border: 'border-red-200' },
+}
