@@ -40,6 +40,7 @@ function IdeaTableRow({ idea }: { idea: Idea }) {
       {/* Idea sentence + mobile collapsible project */}
       <td className="py-1 pl-4 pr-2">
         <div className="flex items-start">
+          {/* Mobile: wrapping textarea so the full sentence shows on multiple lines */}
           <textarea
             ref={titleRef}
             rows={1}
@@ -48,7 +49,15 @@ function IdeaTableRow({ idea }: { idea: Idea }) {
             onBlur={() => { if (title.trim() && title !== idea.title) run(() => updateIdea(idea.id, { title: title.trim() })) }}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
             placeholder="Idea…"
-            className={`${cellInput} font-medium resize-none overflow-hidden leading-snug`}
+            className={`md:hidden ${cellInput} font-medium resize-none overflow-hidden leading-snug`}
+          />
+          {/* Desktop: single-line input (the column is wide enough) */}
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            onBlur={() => { if (title.trim() && title !== idea.title) run(() => updateIdea(idea.id, { title: title.trim() })) }}
+            placeholder="Idea…"
+            className={`hidden md:block ${cellInput} font-medium`}
           />
           {/* Expand/collapse toggle — mobile only */}
           <button

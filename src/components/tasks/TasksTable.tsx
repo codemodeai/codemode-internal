@@ -113,6 +113,7 @@ function TaskTableRow({ task, dragEnabled }: { task: Task; dragEnabled: boolean 
       {/* Task title + mobile collapsible details (priority/status/date/remarks) */}
       <td className="py-1 pr-2">
         <div className="flex items-start">
+          {/* Mobile: wrapping textarea so the full sentence shows on multiple lines */}
           <textarea
             ref={titleRef}
             rows={1}
@@ -121,7 +122,15 @@ function TaskTableRow({ task, dragEnabled }: { task: Task; dragEnabled: boolean 
             onBlur={() => { if (title.trim() && title !== task.title) run(() => updateTask(task.id, { title: title.trim() })) }}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() } }}
             placeholder="Task…"
-            className={`${cellInput} font-medium resize-none overflow-hidden leading-snug ${done ? 'line-through text-cm-subtle' : ''}`}
+            className={`md:hidden ${cellInput} font-medium resize-none overflow-hidden leading-snug ${done ? 'line-through text-cm-subtle' : ''}`}
+          />
+          {/* Desktop: single-line input (the column is wide enough) */}
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            onBlur={() => { if (title.trim() && title !== task.title) run(() => updateTask(task.id, { title: title.trim() })) }}
+            placeholder="Task…"
+            className={`hidden md:block ${cellInput} font-medium ${done ? 'line-through text-cm-subtle' : ''}`}
           />
           {/* Expand/collapse toggle — mobile only */}
           <button
