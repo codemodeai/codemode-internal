@@ -78,13 +78,15 @@ function TaskTableRow({ task }: { task: Task }) {
         </select>
       </td>
 
-      {/* Date */}
+      {/* Date — calendar picker only, no typing */}
       <td className="py-1 pr-2 w-36">
         <input
           type="date"
           value={task.due_date ?? ''}
           onChange={e => run(() => updateTask(task.id, { due_date: e.target.value || null }))}
-          className={`${cellInput} text-xs text-cm-muted`}
+          onKeyDown={e => e.preventDefault()}
+          onMouseDown={e => { e.preventDefault(); (e.currentTarget as HTMLInputElement).focus(); try { (e.currentTarget as HTMLInputElement).showPicker() } catch {} }}
+          className={`${cellInput} text-xs text-cm-muted cursor-pointer`}
         />
       </td>
 
