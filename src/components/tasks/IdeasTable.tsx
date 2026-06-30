@@ -135,11 +135,11 @@ function AddIdeaRow() {
 
 export default function IdeasTable({ ideas, projects }: { ideas: Idea[]; projects: string[] }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
       <datalist id={PROJECTS_LIST_ID}>
         {projects.map(p => <option key={p} value={p} />)}
       </datalist>
-      <table className="w-full">
+      <table className="w-full min-w-[520px]">
         <thead>
           <tr className="border-b border-cm-border bg-cm-bg text-left">
             <th className="px-2 py-2.5 pl-4 text-xs font-semibold text-cm-muted uppercase tracking-wide">Idea</th>

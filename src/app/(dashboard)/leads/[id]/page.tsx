@@ -33,7 +33,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Link href="/leads" className="text-cm-subtle hover:text-cm-muted text-sm transition-colors">Leads</Link>
@@ -54,12 +54,12 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
         </div>
       </div>
 
-      <div className="flex items-center gap-0 border-b border-cm-border">
+      <div className="flex items-center gap-0 border-b border-cm-border overflow-x-auto">
         {TABS.map(t => (
           <Link
             key={t.key}
             href={`/leads/${id}?tab=${t.key}`}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               tab === t.key ? 'border-cm-blue text-cm-blue' : 'border-transparent text-cm-muted hover:text-cm-text'
             }`}
           >
@@ -69,7 +69,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
       </div>
 
       {tab === 'overview' && (
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <div className="space-y-4">
             <InfoCard title="Contact">
               <Field label="Email" value={lead.email} />
@@ -130,7 +130,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
           {/* Platform Scores */}
           {(lead.instagram_score !== null || lead.facebook_score !== null || lead.website_score !== null) && (
             <InfoCard title="Platform Scores">
-              <div className="grid grid-cols-3 gap-6 py-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 py-2">
                 {[
                   { label: 'Instagram', score: lead.instagram_score, emoji: '📸' },
                   { label: 'Facebook', score: lead.facebook_score, emoji: '📘' },
@@ -252,7 +252,7 @@ export default async function LeadDetailPage({ params, searchParams }: { params:
 
       {tab === 'call' && (
         <div className="space-y-5">
-          <div className="grid grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <InfoCard title="Call Details">
               <Field label="Call Booked" value={lead.call_booked ? 'Yes' : 'No'} />
               <Field label="Date & Time" value={lead.call_datetime ? new Date(lead.call_datetime).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) : undefined} />

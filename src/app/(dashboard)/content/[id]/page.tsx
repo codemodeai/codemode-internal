@@ -69,7 +69,7 @@ export default async function ContentItemPage({ params }: { params: Params }) {
       {item.status === 'published' && (
         <div className="bg-white rounded-2xl shadow-sm p-5">
           <h3 className="text-xs font-semibold text-cm-subtle uppercase tracking-wide mb-4">Performance</h3>
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
               { label: 'Views', value: item.views },
               { label: 'Likes', value: item.likes },

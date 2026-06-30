@@ -182,7 +182,7 @@ export default function ContentEditor({ item }: { item: ContentItem }) {
       {item.status === 'published' && (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
           <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Update Performance</h3>
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[
               { label: 'Views', state: views, set: setViews },
               { label: 'Likes', state: likes, set: setLikes },

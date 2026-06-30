@@ -76,7 +76,7 @@ export default async function ClientDetailPage({ params, searchParams }: { param
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Link href="/clients" className="text-cm-subtle hover:text-cm-muted text-sm transition-colors">Clients</Link>
@@ -91,10 +91,10 @@ export default async function ClientDetailPage({ params, searchParams }: { param
         </span>
       </div>
 
-      <div className="flex items-center gap-0 border-b border-cm-border">
+      <div className="flex items-center gap-0 border-b border-cm-border overflow-x-auto">
         {TABS.map(t => (
           <Link key={t.key} href={`/clients/${id}?tab=${t.key}`}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
               tab === t.key ? 'border-cm-blue text-cm-blue' : 'border-transparent text-cm-muted hover:text-cm-text'
             }`}
           >{t.label}</Link>
@@ -102,7 +102,7 @@ export default async function ClientDetailPage({ params, searchParams }: { param
       </div>
 
       {tab === 'overview' && (
-        <div className="grid grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           <div className="space-y-4">
             <InfoCard title="Contact">
               <Field label="Email" value={client.email} />
@@ -136,7 +136,7 @@ export default async function ClientDetailPage({ params, searchParams }: { param
 
       {tab === 'quote' && project && (
         <div className="space-y-5">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
               { label: 'Contract Value', value: project.contract_value ? `₹${Number(project.contract_value).toLocaleString('en-IN')}` : '—', color: 'text-cm-text' },
               { label: 'Collected', value: `₹${totalPaid.toLocaleString('en-IN')}`, color: 'text-emerald-600' },
@@ -267,7 +267,7 @@ export default async function ClientDetailPage({ params, searchParams }: { param
 
       {tab === 'payments' && project && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="bg-white rounded-2xl shadow-sm p-5 text-center">
               <p className="text-xs text-cm-subtle uppercase tracking-wide mb-2">Collected</p>
               <p className="text-2xl font-bold text-emerald-600">₹{totalPaid.toLocaleString('en-IN')}</p>
@@ -278,8 +278,8 @@ export default async function ClientDetailPage({ params, searchParams }: { param
             </div>
           </div>
           <ClientWorkActions clientId={id} projectId={project.id} tab="payments" />
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
               <thead>
                 <tr className="border-b border-cm-border bg-cm-bg">
                   <th className="text-left px-5 py-3 text-xs font-semibold text-cm-muted uppercase tracking-wide">Milestone</th>

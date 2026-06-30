@@ -105,13 +105,13 @@ export default async function ContentPage({ searchParams }: { searchParams: Sear
 
       {/* Calendar view */}
       {view === 'calendar' && (
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="grid grid-cols-7 border-b border-cm-border bg-cm-bg">
+        <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
+          <div className="grid grid-cols-7 min-w-[700px] border-b border-cm-border bg-cm-bg">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
               <div key={d} className="py-3 text-center text-xs font-semibold text-cm-muted uppercase tracking-wide">{d}</div>
             ))}
           </div>
-          <div className="grid grid-cols-7">
+          <div className="grid grid-cols-7 min-w-[700px]">
             {Array.from({ length: getDay(monthStart) }).map((_, i) => (
               <div key={`empty-${i}`} className="min-h-[100px] border-b border-r border-gray-50 bg-cm-bg/40" />
             ))}
@@ -145,8 +145,8 @@ export default async function ContentPage({ searchParams }: { searchParams: Sear
 
       {/* List view */}
       {view === 'list' && (
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
             <thead>
               <tr className="border-b border-cm-border bg-cm-bg">
                 <th className="text-left px-5 py-3 text-xs font-semibold text-cm-muted uppercase tracking-wide">Title</th>

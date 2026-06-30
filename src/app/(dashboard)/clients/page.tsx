@@ -88,8 +88,8 @@ export default async function ClientsPage({ searchParams }: { searchParams: Sear
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
+        <table className="w-full min-w-[720px] text-sm">
           <thead>
             <tr className="border-b border-cm-border bg-cm-bg">
               <th className="text-left px-5 py-3 text-xs font-semibold text-cm-muted uppercase tracking-wide">Client</th>

@@ -114,8 +114,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Search
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
+        <table className="w-full min-w-[820px] text-sm">
           <thead>
             <tr className="border-b border-cm-border bg-cm-bg">
               <th className="text-left px-5 py-3 text-xs font-semibold text-cm-muted uppercase tracking-wide">Name</th>

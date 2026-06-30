@@ -156,8 +156,8 @@ function AddTaskRow() {
 
 export default function TasksTable({ tasks }: { tasks: Task[] }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-      <table className="w-full">
+    <div className="bg-white rounded-2xl shadow-sm overflow-x-auto">
+      <table className="w-full min-w-[680px]">
         <thead>
           <tr className="border-b border-cm-border bg-cm-bg text-left">
             <th className="pl-4 pr-1 py-2.5 w-9" />

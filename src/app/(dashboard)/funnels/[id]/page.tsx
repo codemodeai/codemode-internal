@@ -85,7 +85,7 @@ export default async function FunnelDetailPage({ params, searchParams }: { param
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: 'Total Events', value: totalEvents ?? 0, color: 'text-cm-text' },
           { label: 'Leads Created', value: processedEvents ?? 0, color: 'text-emerald-600' },

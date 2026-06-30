@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { markConversationRead } from '@/lib/actions/inbox'
 import ReplyBox from '@/components/inbox/ReplyBox'
 import AiToggle from '@/components/inbox/AiToggle'
-import { MessageCircle, User } from 'lucide-react'
+import { MessageCircle, User, ArrowLeft } from 'lucide-react'
 
 type SearchParams = Promise<{ c?: string }>
 
@@ -49,6 +49,9 @@ export default async function InboxPage({ searchParams }: { searchParams: Search
   const conversations = (convData ?? []) as ConvRow[]
   const selectedId = c ?? conversations[0]?.id ?? null
   const selected = conversations.find(x => x.id === selectedId) ?? null
+  // On mobile we show one pane at a time: the list, or (when a conversation is
+  // explicitly opened via ?c=) the thread. Desktop always shows both.
+  const hasSelection = !!c
 
   let messages: MsgRow[] = []
   if (selected) {
@@ -65,7 +68,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Search
   return (
     <div className="h-[calc(100vh-7.5rem)] flex bg-white rounded-2xl shadow-sm overflow-hidden">
       {/* Conversation list */}
-      <div className="w-80 flex-shrink-0 border-r border-cm-border flex flex-col">
+      <div className={`w-full md:w-80 flex-shrink-0 border-r border-cm-border flex-col ${hasSelection ? 'hidden md:flex' : 'flex'}`}>
         <div className="px-4 py-3.5 border-b border-cm-border">
           <h2 className="text-sm font-semibold text-cm-text flex items-center gap-2">
             <MessageCircle size={16} className="text-cm-blue" /> WhatsApp Inbox
@@ -106,7 +109,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Search
       </div>
 
       {/* Thread */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className={`flex-1 flex-col min-w-0 ${hasSelection ? 'flex' : 'hidden md:flex'}`}>
         {!selected ? (
           <div className="flex-1 flex items-center justify-center text-cm-subtle text-sm">
             Select a conversation
@@ -114,8 +117,11 @@ export default async function InboxPage({ searchParams }: { searchParams: Search
         ) : (
           <>
             {/* Header */}
-            <div className="px-5 py-3 border-b border-cm-border flex items-center justify-between">
+            <div className="px-4 sm:px-5 py-3 border-b border-cm-border flex items-center justify-between">
               <div className="flex items-center gap-3">
+                <Link href="/inbox" className="md:hidden text-cm-muted hover:text-cm-text -ml-1 p-1" aria-label="Back to conversations">
+                  <ArrowLeft size={18} />
+                </Link>
                 <div className="w-9 h-9 rounded-full bg-cm-bg flex items-center justify-center">
                   <User size={16} className="text-cm-muted" />
                 </div>

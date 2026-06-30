@@ -13,7 +13,7 @@ export default function DashboardLoading() {
       </div>
 
       {/* Metric row */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="bg-white rounded-2xl p-5 shadow-sm space-y-4">
             <div className="h-10 w-10 rounded-xl bg-cm-border/50" />

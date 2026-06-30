@@ -87,7 +87,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Metric cards */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {metrics.map(m => (
           <div key={m.label} className="bg-white rounded-2xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
@@ -103,17 +103,17 @@ export default async function DashboardPage() {
       </div>
 
       {/* Main grid */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         {/* Pipeline kanban — 2 cols */}
-        <div className="col-span-2 bg-white rounded-2xl shadow-sm p-5">
+        <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm p-5">
           <div className="flex items-center justify-between mb-5">
             <h2 className="font-semibold text-cm-text">Active Pipeline</h2>
             <Link href="/leads" className="text-xs text-cm-blue flex items-center gap-1 hover:underline font-medium">
               View all <ArrowRight size={11} />
             </Link>
           </div>
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {stages.map(stage => {
               const leads = byStage[stage] ?? []
               return (

@@ -25,11 +25,11 @@ const NAV = [
   { href: '/settings', label: 'Settings',      icon: Settings },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
 
   return (
-    <aside className="w-60 flex-shrink-0 bg-cm-sidebar flex flex-col">
+    <aside className="w-60 h-full flex-shrink-0 bg-cm-sidebar flex flex-col">
       {/* Logo */}
       <div className="px-5 py-6">
         <div className="flex items-center gap-3">
@@ -51,6 +51,7 @@ export default function Sidebar() {
             <Link
               key={href}
               href={href}
+              onClick={onNavigate}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
                 active
                   ? 'bg-cm-blue text-white shadow-sm'
